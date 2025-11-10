@@ -1,44 +1,84 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
-	"io"
+	"log"
+	"net"
 	"os"
-	"time"
+	"os/signal"
 )
 
-func getLinesFromChannel(f io.ReadCloser) <-chan string {
-	out := make(chan string)
+func handleConnection(ctx context.Context, conn net.Conn) {
+	defer conn.Close()
 
-	go func() {
-		defer close(out)
-		tmp := make([]byte, 8)
+	conn.Write([]byte("Hello from TCP server!\n"))
 
-		for {
-			n, err := f.Read(tmp)
-			if n > 0 {
-				out <- string(tmp[:n])
-				time.Sleep(100 * time.Millisecond)
-			}
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Connection stopped by context")
+			return
+		default:
+			buf := make([]byte, 1024)
+			n, err := conn.Read(buf)
 			if err != nil {
-				break
+				return
+			}
+
+			message := string(buf[:n])
+			log.Printf("Received: %s", message)
+
+			response := "Your message was received, its \"" + message + "\"\n"
+			if _, err := conn.Write([]byte(response)); err != nil {
+				return
+			}
+			if tcpConn, ok := conn.(*net.TCPConn); ok {
+				tcpConn.SetNoDelay(true)
 			}
 		}
-	}()
-
-	return out
+	}
 }
-func main() {
-	f, err := os.Open("cmd/server/test.txt")
+
+func startServer(ctx context.Context) error {
+	listener, err := net.Listen("tcp", "127.0.0.1:8080")
 	if err != nil {
-		fmt.Println(err)
+		return fmt.Errorf("listen failed: %w", err)
 	}
 
 	go func() {
-		for str := range getLinesFromChannel(f) {
-			fmt.Println(str)
+		<-ctx.Done()
+		listener.Close()
+	}()
+
+	for {
+		conn, err := listener.Accept()
+		if errors.Is(err, net.ErrClosed) {
+			return nil
+		}
+		if err != nil {
+			log.Printf("Accept error: %v", err)
+			continue
+		}
+		go handleConnection(ctx, conn)
+	}
+}
+
+func main() {
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		fmt.Println("Server started")
+		if startError := startServer(ctx); startError != nil {
+			fmt.Println(startError)
 		}
 	}()
-	time.Sleep(2 * time.Second)
 
+	<-stop
+	fmt.Println("Graceful shutdown")
 }
