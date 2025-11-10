@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"net"
@@ -10,37 +11,40 @@ import (
 )
 
 func readFromServer(ctx context.Context, conn net.Conn) {
-	var res string
-
 	defer conn.Close()
-	for {
+	scanner := bufio.NewScanner(conn)
+
+	for scanner.Scan() {
 		select {
 		case <-ctx.Done():
 			fmt.Println("Reader exited")
 			return
 		default:
-			buff := make([]byte, 1024)
-			n, _ := conn.Read(buff)
-			res += string(buff)
-			if n < len(buff) {
-				break
-			}
-			fmt.Println("Message from server --->", string(res))
+			message := scanner.Text()
+			fmt.Println("Message from server --->", message)
 		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Read error:", err)
 	}
 }
 
 func writeToServer(ctx context.Context, conn net.Conn) {
-	var str string
-	for {
+	scanner := bufio.NewScanner(os.Stdin)
+
+	for scanner.Scan() {
 		select {
 		case <-ctx.Done():
 			fmt.Println("Writer exited")
 			return
 		default:
-			fmt.Println("Input your message to server: ")
-			fmt.Scanln(&str)
-			conn.Write([]byte(str + "\n"))
+			message := scanner.Text()
+			_, err := conn.Write([]byte(message + "\n"))
+			if err != nil {
+				fmt.Println("Write error:", err)
+				return
+			}
 		}
 	}
 }
@@ -54,9 +58,9 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conn, err1 := net.Dial("tcp", "127.0.0.1:8080")
-	if err1 != nil {
-		fmt.Println(err1)
+	conn, err := net.Dial("tcp", "127.0.0.1:8080")
+	if err != nil {
+		fmt.Println("Connection error:", err)
 		return
 	}
 
@@ -65,7 +69,6 @@ func main() {
 
 	<-stop
 	cancel()
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	fmt.Println("Client stopped")
-
 }

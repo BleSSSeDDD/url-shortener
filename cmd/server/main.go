@@ -1,8 +1,8 @@
 package main
 
 import (
+	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -13,31 +13,32 @@ import (
 func handleConnection(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 
+	if tcpConn, ok := conn.(*net.TCPConn); ok {
+		tcpConn.SetNoDelay(true)
+	}
+
 	conn.Write([]byte("Hello from TCP server!\n"))
 
-	for {
+	scanner := bufio.NewScanner(conn)
+	for scanner.Scan() {
 		select {
 		case <-ctx.Done():
 			log.Println("Connection stopped by context")
 			return
 		default:
-			buf := make([]byte, 1024)
-			n, err := conn.Read(buf)
-			if err != nil {
-				return
-			}
-
-			message := string(buf[:n])
+			message := scanner.Text()
 			log.Printf("Received: %s", message)
 
-			response := "Your message was received, its \"" + message + "\"\n"
+			response := "Your message was received: \"" + message + "\"\n"
 			if _, err := conn.Write([]byte(response)); err != nil {
+				log.Printf("Write error: %v", err)
 				return
 			}
-			if tcpConn, ok := conn.(*net.TCPConn); ok {
-				tcpConn.SetNoDelay(true)
-			}
 		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Printf("Read error: %v", err)
 	}
 }
 
@@ -54,10 +55,10 @@ func startServer(ctx context.Context) error {
 
 	for {
 		conn, err := listener.Accept()
-		if errors.Is(err, net.ErrClosed) {
-			return nil
-		}
 		if err != nil {
+			if ctx.Err() != nil {
+				return nil
+			}
 			log.Printf("Accept error: %v", err)
 			continue
 		}
@@ -73,7 +74,7 @@ func main() {
 	defer cancel()
 
 	go func() {
-		fmt.Println("Server started")
+		fmt.Println("Server started on :8080")
 		if startError := startServer(ctx); startError != nil {
 			fmt.Println(startError)
 		}
@@ -81,4 +82,5 @@ func main() {
 
 	<-stop
 	fmt.Println("Graceful shutdown")
+	cancel()
 }
