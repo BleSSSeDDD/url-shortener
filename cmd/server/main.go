@@ -16,17 +16,28 @@ type ShortenerServer struct {
 
 // Хендлер для /shorten
 func (s *ShortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request) {
+	url := r.FormValue("url")
 
 }
 
 // Хендлер для корневой директории сервера
 func (s *ShortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte())
+	htmlContent, err := os.ReadFile("./templates/index.html")
+	if err != nil {
+		w.Write([]byte("Ошибка сервера, html не прочитался"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(htmlContent))
 }
 
 // Стартует сервер на порту 8080, если порт занят или другая ошибка - возвращает её
 func (s *ShortenerServer) Start() error {
 	fmt.Println("Запускаем сервер")
+
+	fs := http.FileServer(http.Dir("./static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	http.HandleFunc("/", s.defaultHandler)
 	http.HandleFunc("/shorten", s.shortenHandler)

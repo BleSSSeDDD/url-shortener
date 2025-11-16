@@ -8,13 +8,14 @@ import (
 
 // Содержит поля с ин-мемори хранилищем и мьютексом, методами можно сохранять новые значения или получать старые
 type UrlShortener struct {
-	urls  map[string]string
-	mutex sync.RWMutex
+	codeToURL map[string]string // код -> URL
+	urlToCode map[string]string // URL -> код
+	mutex     sync.RWMutex
 }
 
 // Создает структуру UrlShortener, возвращает на неё указатель
 func NewUrlShortener() *UrlShortener {
-	return &UrlShortener{urls: make(map[string]string), mutex: sync.RWMutex{}}
+	return &UrlShortener{codeToURL: make(map[string]string), urlToCode: make(map[string]string), mutex: sync.RWMutex{}}
 }
 
 // Генерирует случайную строку из 4 символов, коллизия на 10000 генераций 0,3%
@@ -39,17 +40,20 @@ func (u *UrlShortener) Set(url string) (shortenedUrl string, err error) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
 
-	encodedUrl := generateShortenedUrl()
+	if existingCode, exists := u.urlToCode[url]; exists {
+		return existingCode, nil
+	}
 
 	for i := 0; i < 10; i++ {
 		code := generateShortenedUrl()
-		if _, exists := u.urls[code]; !exists {
-			u.urls[code] = url
+		if _, exists := u.codeToURL[code]; !exists {
+			u.codeToURL[code] = url
+			u.urlToCode[url] = code
 			return code, nil
 		}
 	}
 
-	return encodedUrl, nil
+	return "", errors.New("не удалось сгенерировать уникальный код")
 }
 
 // Принимает: сокращенный код
@@ -62,7 +66,7 @@ func (u *UrlShortener) Get(encodedUrl string) (shortenedUrl string, err error) {
 	u.mutex.RLock()
 	defer u.mutex.RUnlock()
 
-	res, exists := u.urls[encodedUrl]
+	res, exists := u.codeToURL[encodedUrl]
 
 	if !exists {
 		return "", errors.New("url не найден")
