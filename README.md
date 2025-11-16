@@ -4,8 +4,12 @@ A simple URL shortener service written in Go.
 
 ## Features
 - REST API
-- PostgreSQL storage
-- In-memory cache
+- In-memory storage
+
+TODO:
+-PostgreSQL db
+-Redis for cash
+-Templates + FileServer for static files
 
 ## Installation
 ```bash
