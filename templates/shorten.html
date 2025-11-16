@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ссылка готова! - URL Shortener</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .success-box {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .short-url {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #155724;
+            word-break: break-all;
+            margin: 15px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn-copy {
+            background: #28a745;
+        }
+        .btn-copy:hover {
+            background: #1e7e34;
+        }
+        .original-url {
+            color: #666;
+            font-size: 0.9em;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>✅ Ссылка готова!</h1>
+    
+    <div class="success-box">
+        <p>Ваша ссылка успешно сокращена!</p>
+        
+        <div class="original-url">
+            Оригинальная ссылка: <br>
+            <span id="originalUrl">{{.OriginalURL}}</span>
+        </div>
+        
+        <div class="short-url" id="shortUrl">
+            {{.ShortURL}}
+        </div>
+        
+        <button class="btn btn-copy" onclick="copyToClipboard()">
+            📋 Копировать
+        </button>
+        
+        <a href="{{.ShortURL}}" class="btn" target="_blank">
+            🔗 Перейти
+        </a>
+        
+        <a href="/" class="btn" style="background: #6c757d;">
+            🏠 Создать ещё
+        </a>
+    </div>
+
+    <script>
+        function copyToClipboard() {
+            const shortUrl = document.getElementById('shortUrl').textContent;
+            navigator.clipboard.writeText(shortUrl).then(() => {
+                alert('Ссылка скопирована в буфер!');
+            });
+        }
+        
+        // Автоматически выделяем ссылку для удобства
+        document.addEventListener('DOMContentLoaded', function() {
+            const shortUrl = document.getElementById('shortUrl');
+            shortUrl.addEventListener('click', function() {
+                const range = document.createRange();
+                range.selectNode(shortUrl);
+                window.getSelection().removeAllRanges();
+                window.getSelection().addRange(range);
+            });
+        });
+    </script>
+</body>
+</html>
