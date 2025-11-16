@@ -8,7 +8,9 @@ A simple URL shortener service written in Go.
 
 TODO:
 -PostgreSQL db
+
 -Redis for cash
+
 -Templates + FileServer for static files
 
 ## Installation
