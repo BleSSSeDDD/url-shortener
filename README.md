@@ -7,6 +7,7 @@ A simple URL shortener service written in Go.
 - In-memory storage
 
 TODO:
+
 -PostgreSQL db
 
 -Redis for cash
