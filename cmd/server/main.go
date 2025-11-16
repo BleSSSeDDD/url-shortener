@@ -5,23 +5,59 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+
+	"github.com/BleSSSeDDD/url-shortener/internal/app"
 )
 
+// ShortenerServer нужен чтобы инкапсулировать UrlShortener с методами самого сервера, которые отношенеия к внутренней логике вообще не имеют
+type ShortenerServer struct {
+	shortener *app.UrlShortener
+}
+
+// Хендлер для /shorten
+func (s *ShortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request) {
+
+}
+
+// Хендлер для корневой директории сервера
+func (s *ShortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte())
+}
+
+// Стартует сервер на порту 8080, если порт занят или другая ошибка - возвращает её
+func (s *ShortenerServer) Start() error {
+	fmt.Println("Запускаем сервер")
+
+	http.HandleFunc("/", s.defaultHandler)
+	http.HandleFunc("/shorten", s.shortenHandler)
+
+	if err := http.ListenAndServe("localhost:8080", nil); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func main() {
-	stop := make(chan os.Signal, 1)
+	stop := make(chan os.Signal, 1) //для грейсфул шатдауна
 	signal.Notify(stop, os.Interrupt)
 
+	serverError := make(chan error, 1) // канал для ошибок сервера
+
+	shortenerServer := ShortenerServer{shortener: app.NewUrlShortener()}
+
 	go func() {
-		http.HandleFunc("/shorten", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Тут будет сокращение ссылок"))
-		})
-		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World"))
-		})
-		fmt.Println("Сервер запущен")
-		http.ListenAndServe("localhost:8080", nil)
+		if err := shortenerServer.Start(); err != nil {
+			serverError <- err
+		}
 	}()
 
-	<-stop
-	fmt.Println("Программа завершена!")
+	//Сценарии конца программы
+	select {
+	case <-stop:
+		fmt.Println("Сервер остановлен по сигналу")
+	case err := <-serverError:
+		fmt.Printf("Ошибка сервера: %v\n", err)
+		os.Exit(1)
+	}
 }

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>URL Shortener</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 Сокращатель ссылок</h1>
+        <p>Вставьте длинную ссылку и получите короткую</p>
+        <form action="/shorten" method="POST">
+            <input type="url" name="url" placeholder="https://example.com" required>
+            <button type="submit">Сократить</button>
+        </form>
+    </div>
+</body>
+</html>
