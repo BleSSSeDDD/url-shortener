@@ -18,26 +18,52 @@ type ShortenerServer struct {
 func (s *ShortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request) {
 	url := r.FormValue("url")
 
+	shotenedUrl, err := s.shortener.Set(url)
+	if err != nil {
+		w.Write([]byte("Ошибка на стороне сервера, попробуйте снова :("))
+		fmt.Println(err)
+		return
+	}
+
+	w.Write([]byte("http://localhost:8080/" + shotenedUrl))
 }
 
-// Хендлер для корневой директории сервера
+// Дефолт хендлер либо отдает / либо если это что-то другое, то редиректит с redirectHandler
 func (s *ShortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		s.redirectHandler(w, r)
+		return
+	}
+
 	htmlContent, err := os.ReadFile("./templates/index.html")
 	if err != nil {
 		w.Write([]byte("Ошибка сервера, html не прочитался"))
 		return
 	}
-
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(htmlContent))
+	w.Write(htmlContent)
+}
+
+// Ко всему кроме / и /shorten относимся как к сокращенной ссылке
+func (s *ShortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request) {
+	shortCode := r.URL.Path[1:]
+
+	fmt.Printf("Поиск кода: %s\n", shortCode)
+
+	originalURL, err := s.shortener.Get(shortCode)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	fmt.Printf("Редирект с %s на %s\n", shortCode, originalURL)
+
+	http.Redirect(w, r, originalURL, http.StatusFound)
 }
 
 // Стартует сервер на порту 8080, если порт занят или другая ошибка - возвращает её
 func (s *ShortenerServer) Start() error {
 	fmt.Println("Запускаем сервер")
-
-	fs := http.FileServer(http.Dir("./static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	http.HandleFunc("/", s.defaultHandler)
 	http.HandleFunc("/shorten", s.shortenHandler)

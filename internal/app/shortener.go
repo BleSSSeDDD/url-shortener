@@ -36,6 +36,8 @@ func generateShortenedUrl() string {
 // Возвращает: короткий код и ошибку
 //
 // Логика: генерирует код до 10 раз чтобы избежать коллизии, сохраняет в базу, возвращает код
+//
+// ЛИБО если такое уже есть, то отдаём чё есть
 func (u *UrlShortener) Set(url string) (shortenedUrl string, err error) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
@@ -56,21 +58,13 @@ func (u *UrlShortener) Set(url string) (shortenedUrl string, err error) {
 	return "", errors.New("не удалось сгенерировать уникальный код")
 }
 
-// Принимает: сокращенный код
-//
-// Возвращает: оригинальную ссылку и ошибку
-//
-// Логика: ищет код в базе, возвращает оригинальный url
-// либо если его нет то пустую строку и ошибку
-func (u *UrlShortener) Get(encodedUrl string) (shortenedUrl string, err error) {
-	u.mutex.RLock()
-	defer u.mutex.RUnlock()
+// Если ссылка есть, мы отдаем её, если нет то пустую строку и ошибку
+func (u *UrlShortener) Get(shortenedUrl string) (originalUrl string, err error) {
 
-	res, exists := u.codeToURL[encodedUrl]
-
+	originalUrl, exists := u.codeToURL[shortenedUrl]
 	if !exists {
-		return "", errors.New("url не найден")
+		return "", errors.New("нет такой ссылки")
 	}
 
-	return res, nil
+	return originalUrl, nil
 }
