@@ -91,3 +91,5 @@ func NewUrl(db *sql.DB, newUrl string) {
 func NewCode(db *sql.DB, newCode string) {
 
 }
+
+//что-то из этого не понадобится
