@@ -7,12 +7,7 @@ A simple URL shortener service written in Go.
 - In-memory storage
 
 TODO:
-
--PostgreSQL db
-
--Redis for cash
-
--Templates + FileServer for static files
+В этой ветке буду прикручивать бд и переделывать все с нуля как надо
 
 ## Installation
 ```bash
