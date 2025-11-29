@@ -25,6 +25,7 @@ func (s *ShortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	//КОРОЧЕ ТУТ НАДО МЕНЯТЬ ВСЁ
 	w.Write([]byte("http://localhost:8080/" + shotenedUrl))
 }
 
