@@ -1,25 +1,19 @@
-package app
+package service
 
 import (
 	"errors"
 	"math/rand"
-	"sync"
 )
 
-// Содержит поля с ин-мемори хранилищем и мьютексом, методами можно сохранять новые значения или получать старые
+// Содержит два поля, представляющие сущности из бд: ссылку и её короткий код.
 type UrlShortener struct {
-	codeToURL map[string]string // код -> URL
-	urlToCode map[string]string // URL -> код
-	mutex     sync.RWMutex
+	originalURL string
+	encodedUrl  string
 }
 
 // Создает структуру UrlShortener, возвращает на неё указатель
 func NewUrlShortener() *UrlShortener {
-	return &UrlShortener{
-		codeToURL: make(map[string]string),
-		urlToCode: make(map[string]string),
-		mutex:     sync.RWMutex{},
-	}
+	return &UrlShortener{}
 }
 
 // Генерирует случайную строку из 4 символов, коллизия на 10000 генераций 0,3%
@@ -43,8 +37,6 @@ func generateShortenedUrl() string {
 //
 // ЛИБО если такое уже есть, то отдаём чё есть
 func (u *UrlShortener) Set(url string) (shortenedUrl string, err error) {
-	u.mutex.Lock()
-	defer u.mutex.Unlock()
 
 	// Проверяем существующий URL
 	if existingCode, exists := u.urlToCode[url]; exists {
@@ -55,11 +47,11 @@ func (u *UrlShortener) Set(url string) (shortenedUrl string, err error) {
 	for i := 0; i < 10; i++ {
 		code := generateShortenedUrl()
 
-		if _, exists := u.codeToURL[code]; !exists {
-			u.codeToURL[code] = url
-			u.urlToCode[url] = code
-			return code, nil
-		}
+		// if _, exists := u.codeToURL[code]; !exists {
+		// 	u.codeToURL[code] = url
+		// 	u.urlToCode[url] = code
+		// 	return code, nil
+		// }
 	}
 
 	return "", errors.New("не удалось сгенерировать уникальный код")
@@ -67,8 +59,6 @@ func (u *UrlShortener) Set(url string) (shortenedUrl string, err error) {
 
 // Если ссылка есть, мы отдаем её, если нет то пустую строку и ошибку
 func (u *UrlShortener) Get(shortCode string) (originalUrl string, err error) {
-	u.mutex.RLock()
-	defer u.mutex.RUnlock()
 
 	originalUrl, exists := u.codeToURL[shortCode]
 	if !exists {

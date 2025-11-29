@@ -6,12 +6,12 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/BleSSSeDDD/url-shortener/internal/app"
+	"github.com/BleSSSeDDD/url-shortener/internal/service"
 )
 
 // ShortenerServer нужен чтобы инкапсулировать UrlShortener с методами самого сервера, которые отношенеия к внутренней логике вообще не имеют
 type ShortenerServer struct {
-	shortener *app.UrlShortener
+	shortener *service.UrlShortener
 }
 
 // Хендлер для /shorten
@@ -81,7 +81,7 @@ func main() {
 
 	serverError := make(chan error, 1) // канал для ошибок сервера
 
-	shortenerServer := ShortenerServer{shortener: app.NewUrlShortener()}
+	shortenerServer := ShortenerServer{shortener: service.NewUrlShortener()}
 
 	go func() {
 		if err := shortenerServer.Start(); err != nil {
@@ -95,6 +95,5 @@ func main() {
 		fmt.Println("Сервер остановлен по сигналу")
 	case err := <-serverError:
 		fmt.Printf("Ошибка сервера: %v\n", err)
-		os.Exit(1)
 	}
 }
