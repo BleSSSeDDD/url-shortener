@@ -28,3 +28,7 @@ func Init() (db *sql.DB, err error) {
 
 	return db, nil
 }
+
+func GetUrlFromCode(db *sql.DB) (originalUrl string, err error) {
+
+}
