@@ -1,12 +1,17 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/BleSSSeDDD/url-shortener/internal/service"
+	"github.com/BleSSSeDDD/url-shortener/internal/storage"
 )
 
 // ShortenerServer нужен чтобы инкапсулировать UrlShortener с методами самого сервера, которые отношенеия к внутренней логике вообще не имеют
@@ -77,9 +82,25 @@ func (s *ShortenerServer) Start() error {
 
 func main() {
 	stop := make(chan os.Signal, 1) //для грейсфул шатдауна
-	signal.Notify(stop, os.Interrupt)
+	signal.Notify(stop, syscall.SIGTERM)
 
 	serverError := make(chan error, 1) // канал для ошибок сервера
+
+	var db *sql.DB
+	var err error
+	for range 5 {
+		db, err = storage.Init()
+		if err != nil {
+			log.Println("Error: %v, retrying...", err)
+			time.Sleep(time.Second)
+		} else {
+			break
+		}
+	}
+	if err != nil {
+		log.Println("Error: %v, could not connect to database", err)
+		return
+	}
 
 	shortenerServer := ShortenerServer{shortener: service.NewUrlShortener()}
 
