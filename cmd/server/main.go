@@ -5,31 +5,32 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 
 	"github.com/BleSSSeDDD/url-shortener/internal/app"
 )
 
-// ShortenerServer нужен чтобы инкапсулировать UrlShortener с методами самого сервера, которые отношенеия к внутренней логике вообще не имеют
 type ShortenerServer struct {
 	shortener *app.UrlShortener
 }
 
-// Хендлер для /shorten
 func (s *ShortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request) {
 	url := r.FormValue("url")
 
-	shotenedUrl, err := s.shortener.Set(url)
+	shortenedUrl, err := s.shortener.Set(url)
 	if err != nil {
 		w.Write([]byte("Ошибка на стороне сервера, попробуйте снова :("))
 		fmt.Println(err)
 		return
 	}
 
-	//КОРОЧЕ ТУТ НАДО МЕНЯТЬ ВСЁ
-	w.Write([]byte("http://localhost:8080/" + shotenedUrl))
+	host := r.Host
+	if host == "" {
+		host = "localhost:8080"
+	}
+	w.Write([]byte("http://" + host + "/" + shortenedUrl))
 }
 
-// Дефолт хендлер либо отдает / либо если это что-то другое, то редиректит с redirectHandler
 func (s *ShortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		s.redirectHandler(w, r)
@@ -45,7 +46,6 @@ func (s *ShortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request)
 	w.Write(htmlContent)
 }
 
-// Ко всему кроме / и /shorten относимся как к сокращенной ссылке
 func (s *ShortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request) {
 	shortCode := r.URL.Path[1:]
 
@@ -62,14 +62,14 @@ func (s *ShortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request
 	http.Redirect(w, r, originalURL, http.StatusFound)
 }
 
-// Стартует сервер на порту 8080, если порт занят или другая ошибка - возвращает её
-func (s *ShortenerServer) Start() error {
-	fmt.Println("Запускаем сервер")
+func (s *ShortenerServer) Start(port int) error {
+	fmt.Printf("Запускаем сервер на порту %d\n", port)
 
 	http.HandleFunc("/", s.defaultHandler)
 	http.HandleFunc("/shorten", s.shortenHandler)
 
-	if err := http.ListenAndServe("localhost:8080", nil); err != nil {
+	addr := fmt.Sprintf(":%d", port)
+	if err := http.ListenAndServe(addr, nil); err != nil {
 		return err
 	}
 
@@ -77,20 +77,27 @@ func (s *ShortenerServer) Start() error {
 }
 
 func main() {
-	stop := make(chan os.Signal, 1) //для грейсфул шатдауна
+	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
-
-	serverError := make(chan error, 1) // канал для ошибок сервера
+	serverError := make(chan error, 1)
 
 	shortenerServer := ShortenerServer{shortener: app.NewUrlShortener()}
 
+	port := 8080
+	if envPort := os.Getenv("PORT"); envPort != "" {
+		if p, err := strconv.Atoi(envPort); err == nil {
+			port = p
+		}
+	}
+
 	go func() {
-		if err := shortenerServer.Start(); err != nil {
+		if err := shortenerServer.Start(port); err != nil {
 			serverError <- err
 		}
 	}()
 
-	//Сценарии конца программы
+	fmt.Printf("Сервер запущен и доступен по адресу http://0.0.0.0:%d\n", port)
+
 	select {
 	case <-stop:
 		fmt.Println("Сервер остановлен по сигналу")
