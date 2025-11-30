@@ -102,6 +102,8 @@ func main() {
 		return
 	}
 
+	log.Println("Database reaby")
+
 	shortenerServer := ShortenerServer{shortener: service.NewUrlShortener()}
 
 	go func() {
