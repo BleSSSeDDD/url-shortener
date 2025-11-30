@@ -45,7 +45,7 @@ func generateShortenedUrl() string {
 //
 // ЛИБО если такое уже есть, то отдаём чё есть
 func (u *UrlShortener) Set(url string) (shortenedUrl string, err error) {
-	fmt.Printf("🔧 Set() вызван с URL: %s\n", url)
+	fmt.Printf("Set() вызван с URL: %s\n", url)
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
 
