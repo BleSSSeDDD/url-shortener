@@ -1,4 +1,5 @@
 FROM golang:1.25.3 AS build 
+
 WORKDIR /app
 COPY . .
 ENV CGO_ENABLED=0
