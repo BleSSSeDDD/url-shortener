@@ -9,8 +9,9 @@ A simple URL shortener service written in Go.
 
 ## Installation
 ```bash
-git clone https://github.com/BleSSSeDDD/url-shortener/
-go run main.go
+git clone https://https://github.com/BleSSSeDDD/url-shortener.git
+cd BleSSSeDDD/url-shortener
+docker-compose up -d
 ```
 
 ## Browser view
