@@ -7,9 +7,12 @@ A simple URL shortener service written in Go.
 - PostgreSql database
 - Docker containers
 
+## Prerequisites
+- Docker & Docker Compos
+
 ## Installation
 ```bash
-git clone https://https://github.com/BleSSSeDDD/url-shortener.git
+git clone https://github.com/BleSSSeDDD/url-shortener.git
 cd BleSSSeDDD/url-shortener
 docker-compose up -d
 ```
