@@ -1,28 +1,28 @@
 package service
 
 import (
-	"errors"
+	"database/sql"
 	"math/rand"
+
+	"github.com/BleSSSeDDD/url-shortener/internal/storage"
 )
 
-// Содержит два поля, представляющие сущности из бд: ссылку и её короткий код.
 type UrlShortener struct {
-	originalURL string
-	encodedUrl  string
+	db *sql.DB
 }
 
 // Создает структуру UrlShortener, возвращает на неё указатель
-func NewUrlShortener() *UrlShortener {
-	return &UrlShortener{}
+func NewUrlShortener(db *sql.DB) *UrlShortener {
+	return &UrlShortener{db: db}
 }
 
-// Генерирует случайную строку из 4 символов, коллизия на 10000 генераций 0,3%
+// Генерирует случайную строку из 6 символов
 func generateShortenedUrl() string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 	var res string
 
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 6; i++ {
 		res += string(charset[rand.Intn(len(charset))])
 	}
 
@@ -33,37 +33,37 @@ func generateShortenedUrl() string {
 //
 // Возвращает: короткий код и ошибку
 //
-// Логика: генерирует код до 10 раз чтобы избежать коллизии, сохраняет в базу, возвращает код
+// Логика: генерирует код до тех пор, пока он не будет уникальным, сохраняет в базу, возвращает код
 //
 // ЛИБО если такое уже есть, то отдаём чё есть
 func (u *UrlShortener) Set(url string) (shortenedUrl string, err error) {
 
-	// Проверяем существующий URL
-	if existingCode, exists := u.urlToCode[url]; exists {
+	// Проверяем существующий URL, если
+	if existingCode, err := storage.GetCodeFromUrl(u.db, url); err == nil {
 		return existingCode, nil
 	}
 
-	// Генерируем новый уникальный код
-	for i := 0; i < 10; i++ {
-		code := generateShortenedUrl()
+	code := generateShortenedUrl()
 
-		// if _, exists := u.codeToURL[code]; !exists {
-		// 	u.codeToURL[code] = url
-		// 	u.urlToCode[url] = code
-		// 	return code, nil
-		// }
+	// Генерируем новый уникальный код
+	for err == nil {
+		code = generateShortenedUrl()
+		_, err = storage.GetUrlFromCode(u.db, code)
 	}
 
-	return "", errors.New("не удалось сгенерировать уникальный код")
+	err = nil
+
+	if seterr := storage.SetNewPair(u.db, url, code); seterr != nil {
+		return "", seterr
+	}
+
+	return code, nil
 }
 
 // Если ссылка есть, мы отдаем её, если нет то пустую строку и ошибку
 func (u *UrlShortener) Get(shortCode string) (originalUrl string, err error) {
 
-	originalUrl, exists := u.codeToURL[shortCode]
-	if !exists {
-		return "", errors.New("нет такой ссылки")
-	}
+	originalUrl, err = storage.GetUrlFromCode(u.db, shortCode)
 
-	return originalUrl, nil
+	return originalUrl, err
 }

@@ -21,6 +21,7 @@ COPY --from=build /build/static ./static
 COPY --from=build /build/templates ./templates 
 COPY --from=build /build/url-shortener ./url-shortener
 
+
 USER app
 
 EXPOSE 8080

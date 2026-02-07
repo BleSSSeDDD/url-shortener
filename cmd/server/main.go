@@ -40,7 +40,7 @@ func (s *ShortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	htmlContent, err := os.ReadFile("./templates/index.html")
+	htmlContent, err := os.ReadFile("/server/templates/index.html")
 	if err != nil {
 		w.Write([]byte("Ошибка сервера, html не прочитался"))
 		return
@@ -73,7 +73,7 @@ func (s *ShortenerServer) Start() error {
 	http.HandleFunc("/", s.defaultHandler)
 	http.HandleFunc("/shorten", s.shortenHandler)
 
-	if err := http.ListenAndServe("localhost:8080", nil); err != nil {
+	if err := http.ListenAndServe(":8080", nil); err != nil {
 		return err
 	}
 
@@ -91,20 +91,20 @@ func main() {
 	for range 5 {
 		db, err = storage.Init()
 		if err != nil {
-			log.Println("Error: %v, retrying...", err)
+			log.Printf("Error: %v, retrying...\n", err)
 			time.Sleep(time.Second)
 		} else {
 			break
 		}
 	}
 	if err != nil {
-		log.Println("Error: %v, could not connect to database", err)
+		log.Printf("Error: %v, could not connect to database\n", err)
 		return
 	}
 
 	log.Println("Database reaby")
 
-	shortenerServer := ShortenerServer{shortener: service.NewUrlShortener()}
+	shortenerServer := ShortenerServer{shortener: service.NewUrlShortener(db)}
 
 	go func() {
 		if err := shortenerServer.Start(); err != nil {

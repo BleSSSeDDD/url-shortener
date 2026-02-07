@@ -8,8 +8,8 @@ import (
 func TestGenerateShortenedUrl(t *testing.T) {
 	result := generateShortenedUrl()
 
-	if len(result) != 4 {
-		t.Errorf("Expected length 4, got %d", len(result))
+	if len(result) != 6 {
+		t.Errorf("Expected length 6, got %d", len(result))
 	}
 
 	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

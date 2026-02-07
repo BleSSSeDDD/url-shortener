@@ -9,7 +9,7 @@ import (
 )
 
 func Init() (db *sql.DB, err error) {
-	connectString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s",
+	connectString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s  sslmode=disable",
 		os.Getenv("DB_HOST"),
 		os.Getenv("DB_PORT"),
 		os.Getenv("DB_USER"),
@@ -30,5 +30,19 @@ func Init() (db *sql.DB, err error) {
 }
 
 func GetUrlFromCode(db *sql.DB, code string) (originalUrl string, err error) {
+	row := db.QueryRow("SELECT url FROM urls_and_codes WHERE code = $1", code)
+	err = row.Scan(&originalUrl)
+	return originalUrl, err
+}
 
+func GetCodeFromUrl(db *sql.DB, url string) (code string, err error) {
+	row := db.QueryRow("SELECT code FROM urls_and_codes WHERE url = $1", url)
+	err = row.Scan(&code)
+	return code, err
+}
+
+// если все норм, вернет nil
+func SetNewPair(db *sql.DB, url string, code string) error {
+	_, err := db.Exec("INSERT INTO urls_and_codes (url, code) VALUES ($1, $2)", url, code)
+	return err
 }
