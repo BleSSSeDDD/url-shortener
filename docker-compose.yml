@@ -15,31 +15,54 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - app-network 
+      - app-db-network 
+
+  traefik:
+    image: traefik:latest
+    container_name: url-shortener-traefik
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - proxy-app-network
+    restart: unless-stopped
+    command: 
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--providers.docker.exposedbydefault=false"
+
 
   server:
     image: blessseddd/url-shortener-server:latest
-    container_name: url-shortener-server  
-    ports:
-      - 8080:8080
+    container_name: url-shortener-server
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432  
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
-    
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
-
     networks:
-      - app-network
+      - proxy-app-network
+      - app-db-network
+    labels:
+      - traefik.enable=true
+      - "traefik.http.routers.server-url-shortener.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.server-url-shortener.entrypoints=web"
+      - "traefik.http.services.server-url-shortener.loadbalancer.server.url=http://url-shortener-server.url-shortener_proxy-app-network:8080"
 
 volumes:
   postgres_data:
 
 networks:
-  app-network:
+  app-db-network:
+    driver: bridge
+  proxy-app-network:
     driver: bridge

@@ -10,6 +10,13 @@ A simple URL shortener service written in Go.
 ## Prerequisites
 - Docker & Docker Compos
 
+## Problem solved: DNS routing in Docker multi-network setup
+
+Problem: Gateway Timeout (504) when using Traefik with containers in multiple networks.
+Cause: Docker DNS returns all container IPs, Traefik picks random one.
+Solution: Use full container name with network suffix: 
+`container-name.project-name_network-name:port`
+
 ## Installation
 ```bash
 git clone https://github.com/BleSSSeDDD/url-shortener.git
