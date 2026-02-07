@@ -2,156 +2,32 @@
 <html>
 <head>
     <title>URL Shortener</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .container {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            max-width: 500px;
-            width: 100%;
-            text-align: center;
-        }
-
-        h1 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 2.5em;
-            font-weight: 700;
-        }
-
-        p {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 1.1em;
-            line-height: 1.5;
-        }
-
-        .form-group {
-            margin-bottom: 25px;
-        }
-
-        input[type="url"] {
-            width: 100%;
-            padding: 15px 20px;
-            border: 2px solid #e1e5e9;
-            border-radius: 12px;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            background: #f8f9fa;
-        }
-
-        input[type="url"]:focus {
-            outline: none;
-            border-color: #667eea;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        input[type="url"]::placeholder {
-            color: #a0a4a8;
-        }
-
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        button:active {
-            transform: translateY(0);
-        }
-
-        .features {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 30px;
-            padding-top: 30px;
-            border-top: 1px solid #e1e5e9;
-        }
-
-        .feature {
-            text-align: center;
-        }
-
-        .feature-icon {
-            font-size: 2em;
-            margin-bottom: 10px;
-        }
-
-        .feature-text {
-            color: #666;
-            font-size: 0.9em;
-        }
-
-        @media (max-width: 600px) {
-            .container {
-                padding: 30px 20px;
-            }
-            
-            h1 {
-                font-size: 2em;
-            }
-            
-            .features {
-                flex-direction: column;
-                gap: 20px;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div class="container">
         <h1>🔗 Сокращатель ссылок</h1>
-        <p>Вставьте длинную ссылку и получите короткую версию для удобного использования</p>
+        <p>Вставьте длинную ссылку и получите короткую версию</p>
         
         <form action="/shorten" method="POST">
             <div class="form-group">
                 <input type="url" name="url" placeholder="https://example.com/very-long-url" required>
             </div>
-            <button type="submit">Сократить ссылку</button>
+            <button type="submit" class="btn">Сократить ссылку</button>
         </form>
 
         <div class="features">
             <div class="feature">
                 <div class="feature-icon">⚡</div>
-                <div class="feature-text">Мгновенно</div>
+                <div>Мгновенно</div>
             </div>
             <div class="feature">
                 <div class="feature-icon">🔒</div>
-                <div class="feature-text">Безопасно</div>
+                <div>Безопасно</div>
             </div>
             <div class="feature">
                 <div class="feature-icon">🆓</div>
-                <div class="feature-text">Бесплатно</div>
+                <div>Бесплатно</div>
             </div>
         </div>
     </div>

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"text/template"
 	"time"
 
 	"github.com/BleSSSeDDD/url-shortener/internal/service"
@@ -19,22 +20,54 @@ type ShortenerServer struct {
 	shortener *service.UrlShortener
 }
 
-// Хендлер для /shorten
 func (s *ShortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request) {
-	url := r.FormValue("url")
-
-	shotenedUrl, err := s.shortener.Set(url)
-	if err != nil {
-		w.Write([]byte("Ошибка на стороне сервера, попробуйте снова :("))
-		fmt.Println(err)
+	if r.Method != "POST" {
+		http.Redirect(w, r, "/", http.StatusFound)
 		return
 	}
 
-	w.Write([]byte("http://" + r.Host + "/" + shotenedUrl))
+	url := r.FormValue("url")
+	if url == "" {
+		http.Error(w, "URL is required", 400)
+		return
+	}
+
+	code, err := s.shortener.Set(url)
+	if err != nil {
+		log.Printf("Error: %v", err)
+		http.Error(w, "Server error", 500)
+		return
+	}
+
+	host := r.Host
+	if host == "" {
+		host = "localhost:8080"
+	}
+	shortURL := fmt.Sprintf("http://%s/%s", host, code)
+
+	tmpl, err := template.ParseFiles("./templates/shorten.html")
+	if err != nil {
+		fmt.Fprintf(w, "<br>Сокращённая: %s<br><a href='/'>Назад</a>", shortURL)
+		return
+	}
+
+	data := struct {
+		OriginalURL string
+		ShortURL    string
+	}{url, shortURL}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	tmpl.Execute(w, data)
 }
 
-// Дефолт хендлер либо отдает / либо если это что-то другое, то редиректит с redirectHandler
+// Дефолт хендлер либо отдает / либо стайл.css если он запрашивается, если это что-то другое, то редиректит с redirectHandler
 func (s *ShortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request) {
+
+	if r.URL.Path == "/static/style.css" {
+		http.ServeFile(w, r, "./static/style.css")
+		return
+	}
+
 	if r.URL.Path != "/" {
 		s.redirectHandler(w, r)
 		return
