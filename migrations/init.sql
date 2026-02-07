@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS urls_and_codes(
+    url VARCHAR(500) NOT NULL,
+    code VARCHAR(6) PRIMARY KEY
+);

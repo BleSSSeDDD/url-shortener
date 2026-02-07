@@ -1,17 +1,21 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
+	"syscall"
+	"time"
 
-	"github.com/BleSSSeDDD/url-shortener/internal/app"
+	"github.com/BleSSSeDDD/url-shortener/internal/service"
+	"github.com/BleSSSeDDD/url-shortener/internal/storage"
 )
 
 type ShortenerServer struct {
-	shortener *app.UrlShortener
+	shortener *service.UrlShortener
 }
 
 func (s *ShortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +41,7 @@ func (s *ShortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	htmlContent, err := os.ReadFile("./templates/index.html")
+	htmlContent, err := os.ReadFile("/server/templates/index.html")
 	if err != nil {
 		w.Write([]byte("Ошибка сервера, html не прочитался"))
 		return
@@ -68,8 +72,7 @@ func (s *ShortenerServer) Start(port int) error {
 	http.HandleFunc("/", s.defaultHandler)
 	http.HandleFunc("/shorten", s.shortenHandler)
 
-	addr := fmt.Sprintf(":%d", port)
-	if err := http.ListenAndServe(addr, nil); err != nil {
+	if err := http.ListenAndServe(":8080", nil); err != nil {
 		return err
 	}
 
@@ -77,18 +80,30 @@ func (s *ShortenerServer) Start(port int) error {
 }
 
 func main() {
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
-	serverError := make(chan error, 1)
+	stop := make(chan os.Signal, 1) //для грейсфул шатдауна
+	signal.Notify(stop, syscall.SIGTERM)
 
-	shortenerServer := ShortenerServer{shortener: app.NewUrlShortener()}
+	serverError := make(chan error, 1) // канал для ошибок сервера
 
-	port := 8080
-	if envPort := os.Getenv("PORT"); envPort != "" {
-		if p, err := strconv.Atoi(envPort); err == nil {
-			port = p
+	var db *sql.DB
+	var err error
+	for range 5 {
+		db, err = storage.Init()
+		if err != nil {
+			log.Printf("Error: %v, retrying...\n", err)
+			time.Sleep(time.Second)
+		} else {
+			break
 		}
 	}
+	if err != nil {
+		log.Printf("Error: %v, could not connect to database\n", err)
+		return
+	}
+
+	log.Println("Database reaby")
+
+	shortenerServer := ShortenerServer{shortener: service.NewUrlShortener(db)}
 
 	go func() {
 		if err := shortenerServer.Start(port); err != nil {
@@ -103,6 +118,5 @@ func main() {
 		fmt.Println("Сервер остановлен по сигналу")
 	case err := <-serverError:
 		fmt.Printf("Ошибка сервера: %v\n", err)
-		os.Exit(1)
 	}
 }

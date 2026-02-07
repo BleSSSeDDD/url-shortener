@@ -6,6 +6,9 @@ A simple URL shortener service written in Go.
 - REST API
 - In-memory storage
 
+TODO:
+В этой ветке буду прикручивать бд и переделывать все с нуля как надо
+
 ## Installation
 ```bash
 git clone https://https://github.com/BleSSSeDDD/url-shortener.git
