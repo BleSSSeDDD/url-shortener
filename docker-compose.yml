@@ -18,8 +18,8 @@ services:
       - app-network 
 
   server:
-    build: .
-    container_name: url-shortener-server
+    image: blessseddd/url-shortener-server:latest
+    container_name: url-shortener-server  
     ports:
       - 8080:8080
     environment:
