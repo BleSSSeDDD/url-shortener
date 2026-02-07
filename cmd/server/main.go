@@ -30,7 +30,7 @@ func (s *ShortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	w.Write([]byte("http://localhost:8080/" + shotenedUrl))
+	w.Write([]byte("http://" + r.Host + "/" + shotenedUrl))
 }
 
 // Дефолт хендлер либо отдает / либо если это что-то другое, то редиректит с redirectHandler
