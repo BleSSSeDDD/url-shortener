@@ -22,7 +22,6 @@ services:
     container_name: url-shortener-traefik
     ports:
       - "80:80"
-      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
@@ -38,7 +37,6 @@ services:
       server:
         condition: service_healthy
       
-
   server:
     build: .
     container_name: url-shortener-server
@@ -68,8 +66,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
-
-
       
 volumes:
   postgres_data:
