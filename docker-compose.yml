@@ -38,7 +38,7 @@ services:
         condition: service_healthy
       
   server:
-    build: .
+    image: blessseddd/url-shortener-server:latest
     container_name: url-shortener-server
     environment:
       - DB_HOST=postgres
