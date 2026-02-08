@@ -7,7 +7,6 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    /* Возвращаем тот самый градиент */
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     display: flex;
@@ -16,28 +15,31 @@ body {
     padding: 20px;
 }
 
-/* Контейнер-карточка */
+/* Контейнер-карточка (Белый квадрат) */
 .container {
     background: white;
     border-radius: 20px;
     padding: 40px;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-    max-width: 500px;
+    max-width: 500px; /* Сохраняем ширину */
     width: 100%;
     text-align: center;
+    /* Убеждаемся, что внутренности не раздувают блок */
+    overflow: hidden; 
 }
 
 h1 {
     color: #333;
     margin-bottom: 15px;
-    font-size: 2.2em;
+    font-size: 2.6em; /* Увеличено (было 2.2) */
     font-weight: 700;
 }
 
 p {
     color: #666;
     margin-bottom: 30px;
-    line-height: 1.5;
+    line-height: 1.6;
+    font-size: 1.15em; /* Текст описания стал заметно крупнее */
 }
 
 /* Форма и инпуты */
@@ -47,10 +49,11 @@ p {
 
 input[type="url"] {
     width: 100%;
-    padding: 15px 20px;
+    /* Уменьшил padding, чтобы компенсировать рост шрифта и сохранить высоту инпута */
+    padding: 12px 18px; 
     border: 2px solid #e1e5e9;
     border-radius: 12px;
-    font-size: 16px;
+    font-size: 19px; /* Шрифт в инпуте стал крупнее (был 16) */
     transition: all 0.3s ease;
     background: #f8f9fa;
 }
@@ -62,12 +65,12 @@ input[type="url"]:focus {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-/* Кнопки */
+/* Кнопки — оставляем как есть */
 .btn {
     display: inline-block;
-    padding: 15px 25px;
+    padding: 15px 25px; /* Размер как в оригинале */
     border-radius: 12px;
-    font-size: 16px;
+    font-size: 16px;    /* Размер как в оригинале */
     font-weight: 600;
     text-decoration: none;
     cursor: pointer;
@@ -99,7 +102,7 @@ input[type="url"]:focus {
 }
 
 .short-url {
-    font-size: 1.5em;
+    font-size: 1.7em; /* Ссылка стала еще акцентнее */
     font-weight: bold;
     color: #764ba2;
     background: #f1f3f9;
@@ -128,13 +131,13 @@ input[type="url"]:focus {
 }
 
 .feature-icon {
-    font-size: 1.8em;
+    font-size: 2em; /* Иконки чуть больше */
     margin-bottom: 5px;
 }
 
 .feature div {
     color: #666;
-    font-size: 0.85em;
+    font-size: 0.95em; /* Текст под иконками стал читабельнее */
 }
 
 /* Адаптив для мобилок */
