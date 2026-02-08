@@ -2,9 +2,12 @@ package service
 
 import (
 	"database/sql"
+	"fmt"
 	"math/rand"
 
 	"github.com/BleSSSeDDD/url-shortener/internal/storage"
+	"github.com/jackc/pgerrcode"
+	"github.com/lib/pq"
 )
 
 type UrlShortener struct {
@@ -20,13 +23,13 @@ func NewUrlShortener(db *sql.DB) *UrlShortener {
 func generateShortenedUrl() string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-	var res string
+	res := make([]byte, 6)
 
 	for i := 0; i < 6; i++ {
-		res += string(charset[rand.Intn(len(charset))])
+		res[i] = charset[rand.Intn(len(charset))]
 	}
 
-	return res
+	return string(res)
 }
 
 // Принимает: оригинальный URL
@@ -43,21 +46,21 @@ func (u *UrlShortener) Set(url string) (shortenedUrl string, err error) {
 		return existingCode, nil
 	}
 
-	code := generateShortenedUrl()
-
 	// Генерируем новый уникальный код
-	for err == nil {
-		code = generateShortenedUrl()
-		_, err = storage.GetUrlFromCode(u.db, code)
+	for i := 0; i < 10; i++ {
+		code := generateShortenedUrl()
+		seterr := storage.SetNewPair(u.db, url, code)
+		if seterr == nil {
+			return code, nil
+		} else if pgErr, ok := seterr.(*pq.Error); ok {
+			if pgErr.Code == pgerrcode.UniqueViolation {
+				continue
+			}
+			return "", seterr
+		}
 	}
 
-	err = nil
-
-	if seterr := storage.SetNewPair(u.db, url, code); seterr != nil {
-		return "", seterr
-	}
-
-	return code, nil
+	return "", fmt.Errorf("failed to generate unique code after 10 attempts")
 }
 
 // Если ссылка есть, мы отдаем её, если нет то пустую строку и ошибку

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"text/template"
 	"time"
@@ -28,14 +29,14 @@ func (s *ShortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request)
 
 	url := r.FormValue("url")
 	if url == "" {
-		http.Error(w, "URL is required", 400)
+		http.Error(w, "URL is required", http.StatusBadRequest)
 		return
 	}
 
 	code, err := s.shortener.Set(url)
 	if err != nil {
 		log.Printf("Error: %v", err)
-		http.Error(w, "Server error", 500)
+		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -43,7 +44,7 @@ func (s *ShortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request)
 	if host == "" {
 		host = "localhost:8080"
 	}
-	shortURL := fmt.Sprintf("http://%s/%s", host, code)
+	shortURL := fmt.Sprintf("http://%s/r/%s", host, code)
 
 	tmpl, err := template.ParseFiles("./templates/shorten.html")
 	if err != nil {
@@ -60,19 +61,7 @@ func (s *ShortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request)
 	tmpl.Execute(w, data)
 }
 
-// Дефолт хендлер либо отдает / либо стайл.css если он запрашивается, если это что-то другое, то редиректит с redirectHandler
 func (s *ShortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request) {
-
-	if r.URL.Path == "/static/style.css" {
-		http.ServeFile(w, r, "./static/style.css")
-		return
-	}
-
-	if r.URL.Path != "/" {
-		s.redirectHandler(w, r)
-		return
-	}
-
 	htmlContent, err := os.ReadFile("./templates/index.html")
 	if err != nil {
 		w.Write([]byte("Ошибка сервера, html не прочитался"))
@@ -82,9 +71,17 @@ func (s *ShortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request)
 	w.Write(htmlContent)
 }
 
-// Ко всему кроме / и /shorten относимся как к сокращенной ссылке
+func (s *ShortenerServer) healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
+
 func (s *ShortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request) {
-	shortCode := r.URL.Path[1:]
+	shortCode := strings.TrimPrefix(r.URL.Path, "/r/")
+	if shortCode == "" {
+		http.NotFound(w, r)
+		return
+	}
 
 	fmt.Printf("Поиск кода: %s\n", shortCode)
 
@@ -101,10 +98,14 @@ func (s *ShortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request
 
 // Стартует сервер на порту 8080, если порт занят или другая ошибка - возвращает её
 func (s *ShortenerServer) Start() error {
-	fmt.Println("Запускаем сервер")
+
+	fileServer := http.FileServer(http.Dir("./static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fileServer))
 
 	http.HandleFunc("/", s.defaultHandler)
 	http.HandleFunc("/shorten", s.shortenHandler)
+	http.HandleFunc("/r/", s.redirectHandler)
+	http.HandleFunc("/health", s.healthHandler)
 
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		return err
@@ -135,6 +136,8 @@ func main() {
 		return
 	}
 
+	defer db.Close()
+
 	log.Println("Database reaby")
 
 	shortenerServer := ShortenerServer{shortener: service.NewUrlShortener(db)}
@@ -143,6 +146,7 @@ func main() {
 		if err := shortenerServer.Start(); err != nil {
 			serverError <- err
 		}
+		fmt.Println("Сервер запущен")
 	}()
 
 	//Сценарии конца программы
