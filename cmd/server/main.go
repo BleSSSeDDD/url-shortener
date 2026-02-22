@@ -6,8 +6,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
+	"github.com/BleSSSeDDD/url-shortener/internal/config"
+	"github.com/BleSSSeDDD/url-shortener/internal/database"
 	"github.com/BleSSSeDDD/url-shortener/internal/handlers"
 	"github.com/BleSSSeDDD/url-shortener/internal/service"
 	"github.com/BleSSSeDDD/url-shortener/internal/storage"
@@ -19,29 +20,23 @@ func main() {
 
 	serverError := make(chan error, 1) // канал для ошибок сервера
 
-	rdb, err := storage.CacheInit()
+	postgresString := config.GetConnectionStringPostgres()
+	redisString := config.GetConnectionStringRedis()
+
+	redisdb, err := database.CacheInit(redisString)
 	if err != nil {
 		log.Printf("Error: %v", err)
 		return
 	}
 
-	var db storage.Postgres
-	for range 5 {
-		db, err = storage.Init()
-		if err != nil {
-			log.Printf("Error: %v, retrying...\n", err)
-			time.Sleep(time.Second)
-		} else {
-			break
-		}
-	}
+	sqldb, err := database.Init(postgresString)
 	if err != nil {
-		log.Printf("Error: %v, could not connect to database\n", err)
+		log.Printf("Error: %v", err)
 		return
 	}
-	defer db.Close()
+	defer sqldb.Close()
 
-	log.Println("Database reaby")
+	rdb, db := storage.NewCache(redisdb), storage.NewPostgres(sqldb)
 
 	shortenerServer := service.NewUrlShortener(rdb, db)
 	handlerInterface := handlers.NewShortenerServer(shortenerServer)
