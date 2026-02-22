@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"os"
@@ -26,7 +25,7 @@ func main() {
 		return
 	}
 
-	var db *sql.DB
+	var db storage.Postgres
 	for range 5 {
 		db, err = storage.Init()
 		if err != nil {
@@ -40,15 +39,15 @@ func main() {
 		log.Printf("Error: %v, could not connect to database\n", err)
 		return
 	}
-
 	defer db.Close()
 
 	log.Println("Database reaby")
 
-	shortenerServer := handlers.ShortenerServer{Shortener: service.NewUrlShortener(db, rdb)}
+	shortenerServer := service.NewUrlShortener(rdb, db)
+	handlerInterface := handlers.NewShortenerServer(shortenerServer)
 
 	go func() {
-		if err := shortenerServer.Start(); err != nil {
+		if err := handlerInterface.Start(); err != nil {
 			serverError <- err
 		}
 		fmt.Println("Сервер запущен")

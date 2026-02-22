@@ -10,7 +10,16 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-func CacheInit() (rdb *redis.Client, redisConnectErr error) {
+type Cache interface {
+	GetFromCache(code string) (url string, err error)
+	AddToCache(code string, url string)
+}
+
+type cache struct {
+	rdb *redis.Client
+}
+
+func CacheInit() (Cache, error) {
 	redisHost := os.Getenv("REDIS_HOST")
 	if redisHost == "" {
 		redisHost = "localhost"
@@ -23,11 +32,13 @@ func CacheInit() (rdb *redis.Client, redisConnectErr error) {
 
 	addr := fmt.Sprintf("%s:%s", redisHost, redisPort)
 
-	rdb = redis.NewClient(&redis.Options{
+	rdb := redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: "",
 		DB:       0,
 	})
+
+	var redisConnectErr error
 
 	for i := 0; i < 5; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -46,19 +57,19 @@ func CacheInit() (rdb *redis.Client, redisConnectErr error) {
 		return nil, redisConnectErr
 	}
 
-	return rdb, redisConnectErr
+	return &cache{rdb: rdb}, redisConnectErr
 }
 
-func AddToCache(rdb *redis.Client, code string, url string) {
+func (cache *cache) AddToCache(code string, url string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Millisecond)
 	defer cancel()
-	rdb.Set(ctx, code, url, 60*time.Second)
+	cache.rdb.Set(ctx, code, url, 60*time.Second)
 }
 
-func GetFromCache(rdb *redis.Client, code string) (url string, err error) {
+func (cache *cache) GetFromCache(code string) (url string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Millisecond)
 	defer cancel()
-	response := rdb.Get(ctx, code)
+	response := cache.rdb.Get(ctx, code)
 	if response.Err() != nil {
 		return "", response.Err()
 	}

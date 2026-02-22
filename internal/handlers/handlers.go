@@ -11,12 +11,20 @@ import (
 	"github.com/BleSSSeDDD/url-shortener/internal/service"
 )
 
-// ShortenerServer нужен чтобы инкапсулировать UrlShortener с методами самого сервера, которые отношенеия к внутренней логике вообще не имеют
-type ShortenerServer struct {
-	Shortener *service.UrlShortener
+func NewShortenerServer(shortener service.UrlShortener) ShortenerServer {
+	return &shortenerServer{shortener: shortener}
 }
 
-func (s *ShortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request) {
+type ShortenerServer interface {
+	Start() error
+}
+
+// ShortenerServer нужен чтобы инкапсулировать UrlShortener с методами самого сервера, которые отношенеия к внутренней логике вообще не имеют
+type shortenerServer struct {
+	shortener service.UrlShortener
+}
+
+func (s *shortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
@@ -28,7 +36,7 @@ func (s *ShortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	code, err := s.Shortener.Set(url)
+	code, err := s.shortener.Set(url)
 	if err != nil {
 		log.Printf("Error: %v", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
@@ -56,7 +64,7 @@ func (s *ShortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request)
 	tmpl.Execute(w, data)
 }
 
-func (s *ShortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request) {
+func (s *shortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request) {
 	htmlContent, err := os.ReadFile("./templates/index.html")
 	if err != nil {
 		w.Write([]byte("Ошибка сервера, html не прочитался"))
@@ -66,12 +74,12 @@ func (s *ShortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request)
 	w.Write(htmlContent)
 }
 
-func (s *ShortenerServer) healthHandler(w http.ResponseWriter, r *http.Request) {
+func (s *shortenerServer) healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
 }
 
-func (s *ShortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request) {
+func (s *shortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request) {
 	shortCode := strings.TrimPrefix(r.URL.Path, "/r/")
 	if shortCode == "" {
 		http.NotFound(w, r)
@@ -80,7 +88,7 @@ func (s *ShortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request
 
 	log.Printf("Поиск кода: %s\n", shortCode)
 
-	originalURL, err := s.Shortener.Get(shortCode)
+	originalURL, err := s.shortener.Get(shortCode)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -92,7 +100,7 @@ func (s *ShortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request
 }
 
 // Стартует сервер на порту 8080, если порт занят или другая ошибка - возвращает её
-func (s *ShortenerServer) Start() error {
+func (s *shortenerServer) Start() error {
 
 	fileServer := http.FileServer(http.Dir("./static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fileServer))
