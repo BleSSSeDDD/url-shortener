@@ -1,4 +1,15 @@
 services:
+  redis:
+    image: redis:latest
+    container_name: url-shortener-redis
+    restart: unless-stopped 
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - app-db-network
   postgres:
     image: postgres:18
     container_name: url-shortener-postgres
@@ -41,15 +52,18 @@ services:
     image: blessseddd/url-shortener-server:latest
     container_name: url-shortener-server
     environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432  
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}  
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
-
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - proxy-app-network
@@ -59,7 +73,6 @@ services:
       - "traefik.http.routers.server-url-shortener.rule=PathPrefix(`/`)"
       - "traefik.http.routers.server-url-shortener.entrypoints=web"
       - "traefik.http.services.server-url-shortener.loadbalancer.server.url=http://url-shortener-server.url-shortener_proxy-app-network:8080"
-
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
       interval: 5s

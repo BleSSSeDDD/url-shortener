@@ -83,7 +83,7 @@ func (s *ShortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	fmt.Printf("Поиск кода: %s\n", shortCode)
+	log.Printf("Поиск кода: %s\n", shortCode)
 
 	originalURL, err := s.shortener.Get(shortCode)
 	if err != nil {
@@ -91,7 +91,7 @@ func (s *ShortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	fmt.Printf("Редирект с %s на %s\n", shortCode, originalURL)
+	log.Printf("Редирект с %s на %s\n", shortCode, originalURL)
 
 	http.Redirect(w, r, originalURL, http.StatusFound)
 }
@@ -120,8 +120,13 @@ func main() {
 
 	serverError := make(chan error, 1) // канал для ошибок сервера
 
+	rdb, err := storage.CacheInit()
+	if err != nil {
+		log.Printf("Error: %v", err)
+		return
+	}
+
 	var db *sql.DB
-	var err error
 	for range 5 {
 		db, err = storage.Init()
 		if err != nil {
@@ -140,7 +145,7 @@ func main() {
 
 	log.Println("Database reaby")
 
-	shortenerServer := ShortenerServer{shortener: service.NewUrlShortener(db)}
+	shortenerServer := ShortenerServer{shortener: service.NewUrlShortener(db, rdb)}
 
 	go func() {
 		if err := shortenerServer.Start(); err != nil {

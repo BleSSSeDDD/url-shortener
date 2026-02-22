@@ -3,14 +3,28 @@ package storage
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 )
 
 func CacheInit() (rdb *redis.Client, redisConnectErr error) {
+	redisHost := os.Getenv("REDIS_HOST")
+	if redisHost == "" {
+		redisHost = "localhost"
+	}
+
+	redisPort := os.Getenv("REDIS_PORT")
+	if redisPort == "" {
+		redisPort = "6379"
+	}
+
+	addr := fmt.Sprintf("%s:%s", redisHost, redisPort)
+
 	rdb = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     addr,
 		Password: "",
 		DB:       0,
 	})
@@ -20,10 +34,10 @@ func CacheInit() (rdb *redis.Client, redisConnectErr error) {
 		redisConnectErr = rdb.Ping(ctx).Err()
 		cancel()
 		if redisConnectErr != nil {
-			fmt.Println("Подключение к редису не прошло, пробуем...")
+			log.Println("Подключение к редису не прошло, пробуем...")
 			time.Sleep(time.Second)
 		} else {
-			fmt.Println("Подключились к редису")
+			log.Println("Подключились к редису")
 			break
 		}
 	}
@@ -33,4 +47,20 @@ func CacheInit() (rdb *redis.Client, redisConnectErr error) {
 	}
 
 	return rdb, redisConnectErr
+}
+
+func AddToCache(rdb *redis.Client, code string, url string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Millisecond)
+	defer cancel()
+	rdb.Set(ctx, code, url, 60*time.Second)
+}
+
+func GetFromCache(rdb *redis.Client, code string) (url string, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Millisecond)
+	defer cancel()
+	response := rdb.Get(ctx, code)
+	if response.Err() != nil {
+		return "", response.Err()
+	}
+	return response.Val(), nil
 }
