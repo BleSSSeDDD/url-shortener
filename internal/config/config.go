@@ -5,11 +5,11 @@ import (
 	"os"
 )
 
-func getEnv(key string, defaulValue string) string {
+func getEnv(key string, defaultValue string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value
 	}
-	return defaulValue
+	return defaultValue
 }
 
 // проверки для Getenv что она непустая

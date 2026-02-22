@@ -21,10 +21,6 @@ type postgres struct {
 	postgres *sql.DB
 }
 
-func InitializeDB(db *sql.DB) Postgres {
-	return &postgres{postgres: db}
-}
-
 func (db *postgres) GetUrlFromCode(code string) (originalUrl string, err error) {
 	row := db.postgres.QueryRow("SELECT url FROM urls_and_codes WHERE code = $1", code)
 	err = row.Scan(&originalUrl)
