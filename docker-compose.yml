@@ -45,8 +45,7 @@ services:
       - "--entrypoints.web.address=:80"
       - "--providers.docker.exposedbydefault=false"
     depends_on:
-      server:
-        condition: service_healthy
+      - server
       
   server:
     image: blessseddd/url-shortener-server:latest
@@ -77,8 +76,8 @@ services:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
       interval: 5s
       timeout: 5s
-      retries: 3
-      start_period: 5s
+      retries: 5
+      start_period: 10s
       
 volumes:
   postgres_data:

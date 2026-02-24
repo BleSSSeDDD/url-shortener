@@ -181,12 +181,6 @@ func (s *shortenerServer) Start() error {
 	fileServer := http.FileServer(http.Dir("./static"))
 	r.Handle("/static/", http.StripPrefix("/static/", fileServer))
 
-	//html
-	r.HandleFunc("/", s.defaultHandler)
-	r.HandleFunc("/shorten", s.shortenHandler)
-	r.HandleFunc("/r/{code}", s.redirectHandler)
-	r.Get("/health", s.healthHandler)
-
 	//api general
 	r.Get("/api", s.apiRootHandler)
 
@@ -197,7 +191,13 @@ func (s *shortenerServer) Start() error {
 		r.Post("/shorten", s.shortenAPIHandler)
 	})
 
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	//html
+	r.HandleFunc("/", s.defaultHandler)
+	r.HandleFunc("/shorten", s.shortenHandler)
+	r.HandleFunc("/r/{code}", s.redirectHandler)
+	r.Get("/health", s.healthHandler)
+
+	if err := http.ListenAndServe(":8080", r); err != nil {
 		return err
 	}
 
