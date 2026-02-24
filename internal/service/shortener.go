@@ -45,20 +45,15 @@ func generateShortenedUrl() string {
 //
 // ЛИБО если такое уже есть, то отдаём чё есть
 func (u *urlShortener) Set(url string) (shortenedUrl string, err error) {
-	// Проверяем существующий URL, если
-	if existingCode, err := u.storage.GetCodeFromUrl(url); err == nil {
-		return existingCode, nil
-	}
-
 	// Генерируем новый уникальный код
 	for i := 0; i < 10; i++ {
 		code := generateShortenedUrl()
-		seterr := u.storage.SetNewPair(url, code)
+		existingCode, seterr := u.storage.SetNewPair(url, code)
 		if seterr == nil {
-			return code, nil
+			return existingCode, nil
 		} else if pgErr, ok := seterr.(*pq.Error); ok {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				continue
+				return existingCode, nil
 			}
 			return "", seterr
 		}
