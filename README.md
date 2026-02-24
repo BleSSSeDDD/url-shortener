@@ -1,6 +1,3 @@
-Убрал структуру проекта. Вот финальный вариант:
-
-```markdown
 # URL Shortener
 
 A simple URL shortener service written in Go.
