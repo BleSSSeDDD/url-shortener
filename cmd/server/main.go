@@ -34,7 +34,12 @@ func main() {
 		log.Printf("Error: %v", err)
 		return
 	}
-	defer sqldb.Close()
+
+	defer func() {
+		if err := sqldb.Close(); err != nil {
+			log.Printf("error closing DB: %v", err)
+		}
+	}()
 
 	rdb, db := storage.NewCache(redisdb), storage.NewPostgres(sqldb)
 

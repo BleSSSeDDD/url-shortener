@@ -1,28 +1,94 @@
+Убрал структуру проекта. Вот финальный вариант:
+
+```markdown
 # URL Shortener
 
 A simple URL shortener service written in Go.
 
 ## Features
-- REST API
-- PostgreSql database
-- Docker containers
+- REST API (HTML + JSON)
+- PostgreSQL for persistent storage
+- Redis for caching
+- Chi router for clean routing
+- Docker containers with multi-network setup
+- Traefik as reverse proxy
+
+## Tech Stack
+- **Go 1.25+** — core language
+- **Chi** — lightweight router (grouping, middleware, URL params)
+- **PostgreSQL 18** — main database
+- **Redis 7+** — caching layer
+- **Docker + Docker Compose** — containerization
+- **Traefik** — reverse proxy, load balancing
+
+## Browser View
+
+![URL Shortener interface](https://github.com/user-attachments/assets/4f109b36-a331-40de-bbf8-f9e7c299933a)
+
+## API Endpoints
+
+### HTML (for humans)
+- `GET /` — main page with form
+- `POST /shorten` — create short link
+- `GET /r/{code}` — redirect to original URL
+
+### JSON API v1
+- `GET /api` — service info
+- `GET /api/v1` — v1 endpoints list
+- `GET /api/v1/health` — health check
+- `POST /api/v1/shorten` — create short link
+
+  **Request:**
+  ```json
+  {
+    "url": "https://example.com"
+  }
+  ```
+
+  **Response:**
+  ```json
+  {
+    "short_url": "http://localhost/r/abc123",
+    "code": "abc123"
+  }
+  ```
 
 ## Prerequisites
-- Docker & Docker Compos
+- Docker & Docker Compose
 
 ## Installation
-```bash
-git clone https://github.com/BleSSSeDDD/url-shortener.git
-cd BleSSSeDDD/url-shortener
-docker-compose up -d
-```
 
-## Browser view
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/BleSSSeDDD/url-shortener.git
+   cd url-shortener
+   ```
 
-<img width="1868" height="991" alt="image" src="https://github.com/user-attachments/assets/4f109b36-a331-40de-bbf8-f9e7c299933a" />
+2. Create `.env` file (or copy from `.env.example`):
+   ```bash
+   cp .env.example .env
+   ```
 
+3. Start the services:
+   ```bash
+   docker-compose up -d
+   ```
 
-### Docker Networking Configuration for Traefik
+The service will be available at `http://localhost`.
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DB_HOST` | PostgreSQL host | `postgres` |
+| `DB_PORT` | PostgreSQL port | `5432` |
+| `DB_USER` | PostgreSQL user | `postgres` |
+| `DB_PASSWORD` | PostgreSQL password | `12345678` |
+| `DB_NAME` | Database name | `urls_and_codes` |
+| `REDIS_HOST` | Redis host | `redis` |
+| `REDIS_PORT` | Redis port | `6379` |
+
+## Docker Networking Configuration for Traefik
 
 When using Traefik with Docker Compose across multiple networks, explicit URL configuration in Traefik labels is **required** for reliable service discovery:
 
