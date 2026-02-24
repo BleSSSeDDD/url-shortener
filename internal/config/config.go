@@ -26,12 +26,12 @@ func GetConnectionStringPostgres() string {
 }
 
 func GetConnectionStringRedis() string {
-	redisHost := os.Getenv("REDIS_HOST")
+	redisHost := getEnv("REDIS_HOST", "redis")
 	if redisHost == "" {
 		redisHost = "localhost"
 	}
 
-	redisPort := os.Getenv("REDIS_PORT")
+	redisPort := getEnv("REDIS_PORT", "6379")
 	if redisPort == "" {
 		redisPort = "6379"
 	}

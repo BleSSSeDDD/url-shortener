@@ -1,14 +1,15 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"text/template"
 
 	"github.com/BleSSSeDDD/url-shortener/internal/service"
+	"github.com/go-chi/chi/v5"
 )
 
 func NewShortenerServer(shortener service.UrlShortener) ShortenerServer {
@@ -51,7 +52,8 @@ func (s *shortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request)
 
 	tmpl, err := template.ParseFiles("./templates/shorten.html")
 	if err != nil {
-		fmt.Fprintf(w, "<br>Сокращённая: %s<br><a href='/'>Назад</a>", shortURL)
+		log.Printf("Ошибка парсинга шаблона shorten.html: %v", err)
+		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
 		return
 	}
 
@@ -67,7 +69,8 @@ func (s *shortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request)
 func (s *shortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request) {
 	htmlContent, err := os.ReadFile("./templates/index.html")
 	if err != nil {
-		w.Write([]byte("Ошибка сервера, html не прочитался"))
+		log.Printf("Ошибка парсинга шаблона index.html: %v", err)
+		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -80,7 +83,7 @@ func (s *shortenerServer) healthHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *shortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request) {
-	shortCode := strings.TrimPrefix(r.URL.Path, "/r/")
+	shortCode := chi.URLParam(r, "code")
 	if shortCode == "" {
 		http.NotFound(w, r)
 		return
@@ -99,16 +102,100 @@ func (s *shortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request
 	http.Redirect(w, r, originalURL, http.StatusFound)
 }
 
+func (s *shortenerServer) apiRootHandler(w http.ResponseWriter, r *http.Request) {
+	response := APIResponse{
+		Service:       "URL Shortener API",
+		Versions:      []string{"v1"},
+		Latest:        "v1",
+		Documentation: "/api/v1",
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *shortenerServer) apiV1RootHandler(w http.ResponseWriter, r *http.Request) {
+	response := APIV1Response{
+		Version: "v1",
+		Status:  "active",
+		Endpoints: []EndpointInfo{
+			{Path: "/health", Method: "GET", Description: "Health check"},
+			{Path: "/shorten", Method: "POST", Description: "Create short URL"},
+		},
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *shortenerServer) healthAPIHandler(w http.ResponseWriter, r *http.Request) {
+	response := HealthResponse{
+		Status:  "ok",
+		Service: "url-shortener",
+		Version: "v1",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *shortenerServer) shortenAPIHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"only POST allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req ShortenRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
+		return
+	}
+
+	if req.URL == "" {
+		http.Error(w, `{"error":"url required"}`, http.StatusBadRequest)
+		return
+	}
+
+	code, err := s.shortener.Set(req.URL)
+	if err != nil {
+		http.Error(w, `{"error":"server error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	shortURL := fmt.Sprintf("http://%s/r/%s", r.Host, code)
+
+	response := ShortenResponse{
+		ShortURL: shortURL,
+		Code:     code,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
+}
+
 // Стартует сервер на порту 8080, если порт занят или другая ошибка - возвращает её
 func (s *shortenerServer) Start() error {
+	r := chi.NewRouter()
 
+	//статика
 	fileServer := http.FileServer(http.Dir("./static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fileServer))
+	r.Handle("/static/", http.StripPrefix("/static/", fileServer))
 
-	http.HandleFunc("/", s.defaultHandler)
-	http.HandleFunc("/shorten", s.shortenHandler)
-	http.HandleFunc("/r/", s.redirectHandler)
-	http.HandleFunc("/health", s.healthHandler)
+	//html
+	r.HandleFunc("/", s.defaultHandler)
+	r.HandleFunc("/shorten", s.shortenHandler)
+	r.HandleFunc("/r/{code}", s.redirectHandler)
+	r.Get("/health", s.healthHandler)
+
+	//api general
+	r.Get("/api", s.apiRootHandler)
+
+	//api v1
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Get("/", s.apiV1RootHandler)
+		r.Get("/health", s.healthAPIHandler)
+		r.Post("/shorten", s.shortenAPIHandler)
+	})
 
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		return err

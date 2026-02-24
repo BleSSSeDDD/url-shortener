@@ -2,4 +2,4 @@ CREATE TABLE IF NOT EXISTS urls_and_codes(
     url VARCHAR(500) NOT NULL,
     code VARCHAR(6) PRIMARY KEY
 );
-CREATE INDEX IF NOT EXISTS idx_url ON urls_and_codes(url);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_url ON urls_and_codes(url);

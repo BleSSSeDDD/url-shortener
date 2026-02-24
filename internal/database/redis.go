@@ -8,6 +8,8 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+const redisPingTimeout = 1 * time.Second
+
 func CacheInit(addr string) (*redis.Client, error) {
 
 	rdb := redis.NewClient(&redis.Options{
@@ -17,7 +19,7 @@ func CacheInit(addr string) (*redis.Client, error) {
 	})
 
 	var redisConnectErr error
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), redisPingTimeout)
 	redisConnectErr = rdb.Ping(ctx).Err()
 	cancel()
 	if redisConnectErr != nil {

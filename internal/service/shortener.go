@@ -9,6 +9,12 @@ import (
 	"github.com/lib/pq"
 )
 
+const (
+	codeLength  = 6
+	maxAttempts = 10
+	charset     = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+)
+
 type UrlShortener interface {
 	Get(shortCode string) (originalUrl string, err error)
 	Set(url string) (shortenedUrl string, err error)
@@ -26,11 +32,9 @@ func NewUrlShortener(cache storage.Cache, storage storage.Postgres) UrlShortener
 
 // Генерирует случайную строку из 6 символов
 func generateShortenedUrl() string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	res := make([]byte, codeLength)
 
-	res := make([]byte, 6)
-
-	for i := 0; i < 6; i++ {
+	for i := 0; i < codeLength; i++ {
 		res[i] = charset[rand.Intn(len(charset))]
 	}
 
@@ -45,26 +49,21 @@ func generateShortenedUrl() string {
 //
 // ЛИБО если такое уже есть, то отдаём чё есть
 func (u *urlShortener) Set(url string) (shortenedUrl string, err error) {
-	// Проверяем существующий URL, если
-	if existingCode, err := u.storage.GetCodeFromUrl(url); err == nil {
-		return existingCode, nil
-	}
-
 	// Генерируем новый уникальный код
-	for i := 0; i < 10; i++ {
+	for i := 0; i < maxAttempts; i++ {
 		code := generateShortenedUrl()
-		seterr := u.storage.SetNewPair(url, code)
+		existingCode, seterr := u.storage.SetNewPair(url, code)
 		if seterr == nil {
-			return code, nil
+			return existingCode, nil
 		} else if pgErr, ok := seterr.(*pq.Error); ok {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				continue
+				return existingCode, nil
 			}
 			return "", seterr
 		}
 	}
 
-	return "", fmt.Errorf("failed to generate unique code after 10 attempts")
+	return "", fmt.Errorf("failed to generate unique code after %d attempts", maxAttempts)
 }
 
 // Если ссылка есть, мы отдаем её, если нет то пустую строку и ошибку
