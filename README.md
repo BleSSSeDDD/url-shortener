@@ -166,7 +166,7 @@ url-shortener/
 ```
 
 
-##Core Components
+###Core Components
 
 **Storage Layer**
 
@@ -176,19 +176,23 @@ Postgres interface — GetUrlFromCode / SetNewPair (SQL)
 
 **Service Layer**
 
+```text
 Code generation: 6 random chars from [a-zA-Z0-9] (62⁶ ≈ 56B combinations)
 
 Set(url): INSERT with ON CONFLICT → returns existing code for duplicates
 
 Get(code): Cache-aside pattern (Redis → PostgreSQL → populate cache)
+```
 
 **HTTP Layer**
 
+```text
 HTML: GET / (form), POST /shorten, GET /r/{code} (redirect)
 
 JSON API v1: GET /api/v1/health, POST /api/v1/shorten
 
 Health: GET /health → 200 OK
+```
 
 **Docker Network Design**
 
@@ -203,9 +207,11 @@ Two networks isolate DB traffic from proxy traffic (security).
 
 **Data Flow**
 
+```text
 Shorten: Client → Handler → Service → PostgreSQL INSERT ... ON CONFLICT ... RETURNING code → Response
 
 Redirect: Client → Handler → Service → Redis (hit?) → PostgreSQL (miss?) → Populate cache → 302 Redirect
+```
 
 **Database Schema**
 ```sql
@@ -215,6 +221,7 @@ UNIQUE INDEX on url -- prevents duplicates
 
 **Startup Sequence**
 
+```text
 Init Redis + PostgreSQL connections
 
 Build storage → service → handlers
@@ -224,3 +231,4 @@ Start Chi server (port 8080)
 Wait for SIGTERM or crash
 
 Graceful shutdown (close DB)
+```
