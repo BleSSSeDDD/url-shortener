@@ -24,7 +24,7 @@ A simple URL shortener service written in Go.
 
 ## API Endpoints
 
-### HTML (for humans)
+### HTML
 - `GET /` — main page with form
 - `POST /shorten` — create short link
 - `GET /r/{code}` — redirect to original URL
