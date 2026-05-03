@@ -110,3 +110,117 @@ labels:
 - Additional Traefik healthchecks (helpful but don't solve the network routing issue)  
 
 This configuration provides stable routing without requiring complex healthcheck dependencies between Traefik and the backend service.
+
+## Architecture
+
+```yaml
+url-shortener/
+├── cmd/
+│   └── server/           # Application entry point
+├── internal/
+│   ├── config/           # Environment configuration
+│   ├── database/         # Database connection initialization
+│   ├── handlers/         # HTTP handlers and routing
+│   ├── service/          # Business logic layer
+│   └── storage/          # Data access layer (PostgreSQL + Redis)
+├── migrations/           # Database schema migrations
+├── static/               # Static assets (CSS, favicon)
+├── templates/            # HTML templates
+├── main.go               # Application bootstrap
+├── docker-compose.yml    # Container orchestration
+└── go.mod                # Go module dependencies
+```
+
+**The application follows a clean 4-layer architecture with strict separation of concerns:**
+
+```yaml
+┌─────────────────────────────────────────┐
+│            HTTP Layer (handlers)        │
+│  - Chi Router                           │
+│  - HTML Templates                       │
+│  - JSON API v1                          │
+│  - Static File Serving                  │
+└────────────────┬────────────────────────┘
+                 │ depends on
+┌────────────────▼────────────────────────┐
+│        Service Layer (service)          │
+│  - URL shortening logic                 │
+│  - Code generation (6-char random)      │
+│  - Duplicate handling                   │
+│  - Cache-then-DB pattern for reads      │
+└────────────────┬────────────────────────┘
+                 │ depends on
+┌────────────────▼────────────────────────┐
+│       Storage Layer (storage)           │
+│  - Cache interface (Redis)              │
+│  - Postgres interface (SQL)             │
+│  - Data access abstraction              │
+└────────────────┬────────────────────────┘
+                 │ depends on
+┌────────────────▼────────────────────────┐
+│      Database Layer (database)          │
+│  - PostgreSQL connection init           │
+│  - Redis connection init                │
+│  - Connection health checks             │
+└─────────────────────────────────────────┘
+```
+
+
+##Core Components
+
+**Storage Layer**
+
+Cache interface — GetFromCache / AddToCache (Redis, 60ms timeout)
+
+Postgres interface — GetUrlFromCode / SetNewPair (SQL)
+
+**Service Layer**
+
+Code generation: 6 random chars from [a-zA-Z0-9] (62⁶ ≈ 56B combinations)
+
+Set(url): INSERT with ON CONFLICT → returns existing code for duplicates
+
+Get(code): Cache-aside pattern (Redis → PostgreSQL → populate cache)
+
+**HTTP Layer**
+
+HTML: GET / (form), POST /shorten, GET /r/{code} (redirect)
+
+JSON API v1: GET /api/v1/health, POST /api/v1/shorten
+
+Health: GET /health → 200 OK
+
+**Docker Network Design**
+
+```text
+Traefik (port 80)
+    ↕ proxy-app-network
+Go Server (port 8080)
+    ↕ app-db-network
+Redis + PostgreSQL
+Two networks isolate DB traffic from proxy traffic (security).
+```
+
+**Data Flow**
+
+Shorten: Client → Handler → Service → PostgreSQL INSERT ... ON CONFLICT ... RETURNING code → Response
+
+Redirect: Client → Handler → Service → Redis (hit?) → PostgreSQL (miss?) → Populate cache → 302 Redirect
+
+**Database Schema**
+```sql
+urls_and_codes(url VARCHAR(500), code VARCHAR(6) PRIMARY KEY)
+UNIQUE INDEX on url -- prevents duplicates
+```
+
+**Startup Sequence**
+
+Init Redis + PostgreSQL connections
+
+Build storage → service → handlers
+
+Start Chi server (port 8080)
+
+Wait for SIGTERM or crash
+
+Graceful shutdown (close DB)
