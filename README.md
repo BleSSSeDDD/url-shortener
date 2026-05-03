@@ -165,8 +165,7 @@ url-shortener/
 └─────────────────────────────────────────┘
 ```
 
-
-###Core Components
+## Core Components
 
 **Storage Layer**
 
