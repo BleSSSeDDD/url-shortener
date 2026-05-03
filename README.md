@@ -169,9 +169,11 @@ url-shortener/
 
 **Storage Layer**
 
+```text
 Cache interface — GetFromCache / AddToCache (Redis, 60ms timeout)
 
 Postgres interface — GetUrlFromCode / SetNewPair (SQL)
+```
 
 **Service Layer**
 
