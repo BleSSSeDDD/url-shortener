@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	redisTimeout = 60 * time.Millisecond
-	redisTTL     = 60 * time.Second
+	REDIS_TIMEOUT = 1 * time.Second
+	REDIS_TTL     = 60 * time.Second
 )
 
 type Cache interface {
@@ -26,13 +26,13 @@ func NewCache(rdb *redis.Client) Cache {
 }
 
 func (cache *cache) AddToCache(code string, url string) {
-	ctx, cancel := context.WithTimeout(context.Background(), redisTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), REDIS_TIMEOUT)
 	defer cancel()
-	cache.rdb.Set(ctx, code, url, redisTTL)
+	cache.rdb.Set(ctx, code, url, REDIS_TTL)
 }
 
 func (cache *cache) GetFromCache(code string) (url string, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), redisTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), REDIS_TIMEOUT)
 	defer cancel()
 	response := cache.rdb.Get(ctx, code)
 	if response.Err() != nil {

@@ -7,6 +7,7 @@ import (
 	"github.com/BleSSSeDDD/url-shortener/internal/storage"
 	"github.com/jackc/pgerrcode"
 	"github.com/lib/pq"
+	"golang.org/x/sync/singleflight"
 )
 
 const (
@@ -23,6 +24,7 @@ type UrlShortener interface {
 type urlShortener struct {
 	cache   storage.Cache
 	storage storage.Postgres
+	group   singleflight.Group
 }
 
 // Создает структуру UrlShortener, возвращает на неё указатель
@@ -72,9 +74,18 @@ func (u *urlShortener) Get(shortCode string) (originalUrl string, err error) {
 	if err == nil {
 		return originalUrl, nil
 	}
-	originalUrl, err = u.storage.GetUrlFromCode(shortCode)
+
+	code, err, _ := u.group.Do(shortCode, func() (any, error) {
+		return u.storage.GetUrlFromCode(shortCode)
+	})
+
 	if err != nil {
 		return "", err
+	}
+
+	originalUrl, ok := code.(string)
+	if !ok {
+		return "", fmt.Errorf("не удалось скастить ответ signgleflight до стринга")
 	}
 	u.cache.AddToCache(shortCode, originalUrl)
 	return originalUrl, err
