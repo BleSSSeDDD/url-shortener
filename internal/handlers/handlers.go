@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -18,11 +19,13 @@ func NewShortenerServer(shortener service.UrlShortener) ShortenerServer {
 
 type ShortenerServer interface {
 	Start() error
+	Shutdown(shutdownCtx context.Context) error
 }
 
 // ShortenerServer нужен чтобы инкапсулировать UrlShortener с методами самого сервера, которые отношенеия к внутренней логике вообще не имеют
 type shortenerServer struct {
 	shortener service.UrlShortener
+	server    *http.Server
 }
 
 func (s *shortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request) {
@@ -197,9 +200,18 @@ func (s *shortenerServer) Start() error {
 	r.HandleFunc("/r/{code}", s.redirectHandler)
 	r.Get("/health", s.healthHandler)
 
-	if err := http.ListenAndServe(":8080", r); err != nil {
+	s.server = &http.Server{
+		Addr:    ":8080",
+		Handler: r,
+	}
+
+	if err := s.server.ListenAndServe(); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (s *shortenerServer) Shutdown(shutdownCtx context.Context) error {
+	return s.server.Shutdown(shutdownCtx)
 }

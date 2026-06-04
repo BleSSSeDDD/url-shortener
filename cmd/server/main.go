@@ -43,11 +43,11 @@ func main() {
 
 	rdb, db := storage.NewCache(redisdb), storage.NewPostgres(sqldb)
 
-	shortenerServer := service.NewUrlShortener(rdb, db)
-	handlerInterface := handlers.NewShortenerServer(shortenerServer)
+	shortener := service.NewUrlShortener(rdb, db)
+	shortenerServer := handlers.NewShortenerServer(shortener)
 
 	go func() {
-		if err := handlerInterface.Start(); err != nil {
+		if err := shortenerServer.Start(); err != nil {
 			serverError <- err
 		}
 		fmt.Println("Сервер запущен")
@@ -59,5 +59,8 @@ func main() {
 		fmt.Println("Сервер остановлен по сигналу")
 	case err := <-serverError:
 		fmt.Printf("Ошибка сервера: %v\n", err)
+		return
 	}
+
+	shutdown()
 }
