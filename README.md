@@ -209,9 +209,11 @@ Two networks isolate DB traffic from proxy traffic (security).
 **Data Flow**
 
 ```text
-Shorten: Client → Handler → Service → PostgreSQL INSERT ... ON CONFLICT ... RETURNING code → Response
+Shorten:
+Client → Handler → Service → PostgreSQL INSERT ... ON CONFLICT ... RETURNING code → Response
 
-Redirect: Client → Handler → Service → Redis (hit?) → PostgreSQL (miss?) → Populate cache → 302 Redirect
+Redirect:
+Client → Handler → Service → Redis (hit?) → PostgreSQL (miss?) → Populate cache → 302 Redirect
 ```
 
 **Database Schema**
