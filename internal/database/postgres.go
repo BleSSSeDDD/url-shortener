@@ -1,3 +1,4 @@
+// Package database нужен для подключения к бдшке и кэшу
 package database
 
 import (
@@ -5,6 +6,7 @@ import (
 	"log"
 )
 
+// Init создает новое подключение к базе данных
 func Init(connectionString string) (db *sql.DB, err error) {
 	dbAttempt, err1 := sql.Open("postgres", connectionString)
 	if err1 != nil {

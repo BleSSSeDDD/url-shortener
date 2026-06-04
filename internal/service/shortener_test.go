@@ -31,11 +31,11 @@ func TestGenerateShortenedUrl(t *testing.T) {
 
 			switch tc.name {
 			case "тест длины ссылки":
-				assert.Equal(t, CODE_LENGTH, len(got), fmt.Sprintf("ошибка в тесте %s: длина %d, ожидалось %d", tc.name, len(got), CODE_LENGTH))
+				assert.Equal(t, CodeLength, len(got), fmt.Sprintf("ошибка в тесте %s: длина %d, ожидалось %d", tc.name, len(got), CodeLength))
 			case "тест на чарсет":
 				flag := true
 				for _, r := range got {
-					if !strings.Contains(URL_CHARSET, string(r)) {
+					if !strings.Contains(URLCharset, string(r)) {
 						flag = false
 					}
 				}

@@ -1,3 +1,4 @@
+// Package handlers пакет для работы с хттп
 package handlers
 
 import (
@@ -14,10 +15,12 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// NewShortenerServer нужна для DI, инкапсулирует бизнес-логику с хттп
 func NewShortenerServer(shortener service.URLShortener) ShortenerServer {
 	return &shortenerServer{shortener: shortener}
 }
 
+// ShortenerServer интерфейс для того, чтоб можно было мокать сервер
 type ShortenerServer interface {
 	Start() error
 	Shutdown(shutdownCtx context.Context) error
@@ -72,7 +75,7 @@ func (s *shortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func (s *shortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request) {
+func (s *shortenerServer) defaultHandler(w http.ResponseWriter, _ *http.Request) {
 	htmlContent, err := os.ReadFile("./templates/index.html")
 	if err != nil {
 		log.Printf("ошибка парсинга шаблона index.html: %v", err)
@@ -115,7 +118,7 @@ func (s *shortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request
 	http.Redirect(w, r, originalURL, http.StatusFound)
 }
 
-func (s *shortenerServer) apiRootHandler(w http.ResponseWriter, r *http.Request) {
+func (s *shortenerServer) apiRootHandler(w http.ResponseWriter, _ *http.Request) {
 	response := APIResponse{
 		Service:       "URL Shortener API",
 		Versions:      []string{"v1"},
@@ -130,7 +133,7 @@ func (s *shortenerServer) apiRootHandler(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func (s *shortenerServer) apiV1RootHandler(w http.ResponseWriter, r *http.Request) {
+func (s *shortenerServer) apiV1RootHandler(w http.ResponseWriter, _ *http.Request) {
 	response := APIV1Response{
 		Version: "v1",
 		Status:  "active",
@@ -146,7 +149,7 @@ func (s *shortenerServer) apiV1RootHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (s *shortenerServer) healthAPIHandler(w http.ResponseWriter, r *http.Request) {
+func (s *shortenerServer) healthAPIHandler(w http.ResponseWriter, _ *http.Request) {
 	response := HealthResponse{
 		Status:  "ok",
 		Service: "url-shortener",

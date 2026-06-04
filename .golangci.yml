@@ -14,38 +14,26 @@ linters:
     - gofmt
     - revive
     - gosec
-    - unconvert      # лишние преобразования типов
-    - gocritic       # ещё больше полезных советов
+    - unconvert      
+    - gocritic      
   disable:
     - typecheck
 
 linters-settings:
   govet:
-    check-shadowing: true
+    shadow: true
   errcheck:
     check-type-assertions: true
   gocritic:
     enabled-checks:
       - appendCombine
-      - argOrder
-      - assignOp
-      - badCond
       - boolExprSimplify
       - commentedOutCode
-      - defaultCaseOrder
       - emptyFallthrough
       - hexLiteral
-      - ifElseChain
       - methodExprCall
-      - singleCaseSwitch
       - sprintfQuotedString
       - stringXbytes
-      - switchTrue
-      - underef
-      - unlambda
-      - unslice
-      - valSwap
-      - wrapperFunc
       - yodaStyleExpr
 
 issues:
@@ -53,7 +41,6 @@ issues:
   max-issues-per-linter: 0
   max-same-issues: 0
   exclude-rules:
-    # Игнорируем проверку ошибок в тестах для некоторых вспомогательных функций
     - path: _test\.go
       text: "Error return value"
       linters:

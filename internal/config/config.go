@@ -26,6 +26,7 @@ func GetConnectionStringPostgres() string {
 	return connectString
 }
 
+// GetConnectionStringRedis возвращает строку подключения к Redis
 func GetConnectionStringRedis() string {
 	redisHost := getEnv("REDIS_HOST", "redis")
 	if redisHost == "" {
