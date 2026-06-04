@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log"
+	"net/http"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/BleSSSeDDD/url-shortener/internal/config"
 	"github.com/BleSSSeDDD/url-shortener/internal/database"
@@ -29,6 +31,12 @@ func main() {
 		return
 	}
 
+	defer func() {
+		if err := redisdb.Close(); err != nil {
+			log.Printf("error closing Redis: %v", err)
+		}
+	}()
+
 	sqldb, err := database.Init(postgresString)
 	if err != nil {
 		log.Printf("Error: %v", err)
@@ -46,21 +54,32 @@ func main() {
 	shortener := service.NewUrlShortener(rdb, db)
 	shortenerServer := handlers.NewShortenerServer(shortener)
 
+	log.Println("Сервер запускается...")
+
 	go func() {
-		if err := shortenerServer.Start(); err != nil {
+		if err := shortenerServer.Start(); err != nil &&
+			!errors.Is(err, http.ErrServerClosed) {
 			serverError <- err
 		}
-		fmt.Println("Сервер запущен")
 	}()
 
 	//Сценарии конца программы
 	select {
 	case <-gracefullShutdownCtx.Done():
-		fmt.Println("Сервер остановлен по сигналу")
+		log.Println("Сервер будет остановлен по сигналу")
 	case err := <-serverError:
-		fmt.Printf("Ошибка сервера: %v\n", err)
+		log.Printf("Ошибка сервера: %v\n", err)
 		return
 	}
 
 	shutdown()
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer shutdownCancel()
+
+	if err := shortenerServer.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Ошибка выключения сервера: %v\n", err)
+	}
+
+	log.Println("Сервер остановлен")
 }

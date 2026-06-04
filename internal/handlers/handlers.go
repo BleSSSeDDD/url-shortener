@@ -213,5 +213,9 @@ func (s *shortenerServer) Start() error {
 }
 
 func (s *shortenerServer) Shutdown(shutdownCtx context.Context) error {
+	if s.server == nil {
+		return nil
+	}
+
 	return s.server.Shutdown(shutdownCtx)
 }

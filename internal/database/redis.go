@@ -8,7 +8,7 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-const redisPingTimeout = 1 * time.Second
+const REDIS_PING_TIMEOUT = 1 * time.Second
 
 func CacheInit(addr string) (*redis.Client, error) {
 	rdb := redis.NewClient(&redis.Options{
@@ -16,11 +16,17 @@ func CacheInit(addr string) (*redis.Client, error) {
 		Password: "",
 		DB:       0,
 	})
-	log.Printf("Attempting to connect to Redis at %s", addr)
+
+	log.Printf("Пытаемся подключиться к редису по %s", addr)
+
 	var redisConnectErr error
-	ctx, cancel := context.WithTimeout(context.Background(), redisPingTimeout)
+
+	ctx, cancel := context.WithTimeout(context.Background(), REDIS_PING_TIMEOUT)
+
 	redisConnectErr = rdb.Ping(ctx).Err()
+
 	cancel()
+
 	if redisConnectErr != nil {
 		log.Println("Подключение к редису не прошло")
 		return nil, redisConnectErr
