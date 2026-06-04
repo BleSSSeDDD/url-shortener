@@ -182,7 +182,7 @@ func (s *shortenerServer) Start() error {
 
 	//статика
 	fileServer := http.FileServer(http.Dir("./static"))
-	r.Handle("/static/", http.StripPrefix("/static/", fileServer))
+	r.Handle("/static/*", http.StripPrefix("/static/", fileServer))
 
 	//api general
 	r.Get("/api", s.apiRootHandler)

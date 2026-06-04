@@ -54,14 +54,14 @@ func main() {
 	shortener := service.NewUrlShortener(rdb, db)
 	shortenerServer := handlers.NewShortenerServer(shortener)
 
-	log.Println("Сервер запускается...")
-
 	go func() {
 		if err := shortenerServer.Start(); err != nil &&
 			!errors.Is(err, http.ErrServerClosed) {
 			serverError <- err
 		}
 	}()
+
+	log.Println("Сервер запущен")
 
 	//Сценарии конца программы
 	select {
