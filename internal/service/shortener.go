@@ -94,7 +94,7 @@ func (u *urlShortener) Get(ctx context.Context, shortCode string) (originalURL s
 	})
 
 	if singleflightError != nil {
-		return "", err
+		return "", singleflightError
 	}
 
 	originalURL, ok := code.(string)
@@ -106,5 +106,5 @@ func (u *urlShortener) Get(ctx context.Context, shortCode string) (originalURL s
 		log.Printf("ошибка сохранения в кеш: %v", addToCacheErr)
 	}
 
-	return originalURL, err
+	return originalURL, nil
 }
