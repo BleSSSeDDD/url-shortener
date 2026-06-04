@@ -40,7 +40,7 @@ func (s *shortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	code, err := s.shortener.Set(url)
+	code, err := s.shortener.Set(r.Context(), url)
 	if err != nil {
 		log.Printf("Error: %v", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
@@ -94,7 +94,7 @@ func (s *shortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request
 
 	log.Printf("Поиск кода: %s\n", shortCode)
 
-	originalURL, err := s.shortener.Get(shortCode)
+	originalURL, err := s.shortener.Get(r.Context(), shortCode)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -158,7 +158,7 @@ func (s *shortenerServer) shortenAPIHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	code, err := s.shortener.Set(req.URL)
+	code, err := s.shortener.Set(r.Context(), req.URL)
 	if err != nil {
 		http.Error(w, `{"error":"server error"}`, http.StatusInternalServerError)
 		return

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 
@@ -17,8 +18,8 @@ const (
 )
 
 type UrlShortener interface {
-	Get(shortCode string) (originalUrl string, err error)
-	Set(url string) (shortenedUrl string, err error)
+	Get(ctx context.Context, shortCode string) (originalUrl string, err error)
+	Set(ctx context.Context, url string) (shortenedUrl string, err error)
 }
 
 type urlShortener struct {
@@ -50,11 +51,11 @@ func generateShortenedUrl() string {
 // Логика: генерирует код до тех пор, пока он не будет уникальным, сохраняет в базу, возвращает код
 //
 // ЛИБО если такое уже есть, то отдаём чё есть
-func (u *urlShortener) Set(url string) (shortenedUrl string, err error) {
+func (u *urlShortener) Set(ctx context.Context, url string) (shortenedUrl string, err error) {
 	// Генерируем новый уникальный код
 	for i := 0; i < MAX_ATTEMPTS; i++ {
 		code := generateShortenedUrl()
-		existingCode, seterr := u.storage.SetNewPair(url, code)
+		existingCode, seterr := u.storage.SetNewPair(ctx, url, code)
 		if seterr == nil {
 			return existingCode, nil
 		} else if pgErr, ok := seterr.(*pq.Error); ok {
@@ -65,18 +66,18 @@ func (u *urlShortener) Set(url string) (shortenedUrl string, err error) {
 		}
 	}
 
-	return "", fmt.Errorf("failed to generate unique code after %d attempts", MAX_ATTEMPTS)
+	return "", fmt.Errorf("не получилось сгенерировать код за %d попыток", MAX_ATTEMPTS)
 }
 
 // Если ссылка есть, мы отдаем её, если нет то пустую строку и ошибку
-func (u *urlShortener) Get(shortCode string) (originalUrl string, err error) {
-	originalUrl, err = u.cache.GetFromCache(shortCode)
+func (u *urlShortener) Get(ctx context.Context, shortCode string) (originalUrl string, err error) {
+	originalUrl, err = u.cache.GetFromCache(ctx, shortCode)
 	if err == nil {
 		return originalUrl, nil
 	}
 
 	code, err, _ := u.group.Do(shortCode, func() (any, error) {
-		return u.storage.GetUrlFromCode(shortCode)
+		return u.storage.GetUrlFromCode(ctx, shortCode)
 	})
 
 	if err != nil {
@@ -85,8 +86,10 @@ func (u *urlShortener) Get(shortCode string) (originalUrl string, err error) {
 
 	originalUrl, ok := code.(string)
 	if !ok {
-		return "", fmt.Errorf("не удалось скастить ответ signgleflight до стринга")
+		return "", fmt.Errorf("не удалось скастить ответ singleflight до стринга")
 	}
-	u.cache.AddToCache(shortCode, originalUrl)
+
+	u.cache.AddToCache(ctx, shortCode, originalUrl)
+
 	return originalUrl, err
 }

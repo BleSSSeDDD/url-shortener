@@ -13,8 +13,8 @@ const (
 )
 
 type Cache interface {
-	GetFromCache(code string) (url string, err error)
-	AddToCache(code string, url string)
+	GetFromCache(ctx context.Context, code string) (string, error)
+	AddToCache(ctx context.Context, code string, url string) error
 }
 
 type cache struct {
@@ -25,18 +25,26 @@ func NewCache(rdb *redis.Client) Cache {
 	return &cache{rdb: rdb}
 }
 
-func (cache *cache) AddToCache(code string, url string) {
-	ctx, cancel := context.WithTimeout(context.Background(), REDIS_TIMEOUT)
+func (cache *cache) AddToCache(parentCtx context.Context, code string, url string) error {
+	ctx, cancel := context.WithTimeout(parentCtx, REDIS_TIMEOUT)
 	defer cancel()
-	cache.rdb.Set(ctx, code, url, REDIS_TTL)
+
+	if err := cache.rdb.Set(ctx, code, url, REDIS_TTL).Err(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (cache *cache) GetFromCache(code string) (url string, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), REDIS_TIMEOUT)
+func (cache *cache) GetFromCache(parentCtx context.Context, code string) (url string, err error) {
+	ctx, cancel := context.WithTimeout(parentCtx, REDIS_TIMEOUT)
 	defer cancel()
+
 	response := cache.rdb.Get(ctx, code)
+
 	if response.Err() != nil {
 		return "", response.Err()
 	}
+
 	return response.Val(), nil
 }
