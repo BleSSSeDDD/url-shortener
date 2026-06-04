@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
 
 	"github.com/BleSSSeDDD/url-shortener/internal/storage"
@@ -55,7 +56,9 @@ func (u *urlShortener) Set(ctx context.Context, url string) (shortenedUrl string
 	// Генерируем новый уникальный код
 	for i := 0; i < MAX_ATTEMPTS; i++ {
 		code := generateShortenedUrl()
+
 		existingCode, seterr := u.storage.SetNewPair(ctx, url, code)
+
 		if seterr == nil {
 			return existingCode, nil
 		} else if pgErr, ok := seterr.(*pq.Error); ok {
@@ -89,7 +92,9 @@ func (u *urlShortener) Get(ctx context.Context, shortCode string) (originalUrl s
 		return "", fmt.Errorf("не удалось скастить ответ singleflight до стринга")
 	}
 
-	u.cache.AddToCache(ctx, shortCode, originalUrl)
+	if err := u.cache.AddToCache(ctx, shortCode, originalUrl); err != nil {
+		log.Printf("ошибка сохранения в кеш: %v", err)
+	}
 
 	return originalUrl, err
 }

@@ -66,23 +66,32 @@ func (s *shortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request)
 	}{url, shortURL}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.Execute(w, data)
+	if err := tmpl.Execute(w, data); err != nil {
+		log.Printf("Ошибка выполнения шаблона: %v", err)
+	}
 }
 
 func (s *shortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request) {
 	htmlContent, err := os.ReadFile("./templates/index.html")
 	if err != nil {
-		log.Printf("Ошибка парсинга шаблона index.html: %v", err)
+		log.Printf("ошибка парсинга шаблона index.html: %v", err)
 		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
 		return
 	}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(htmlContent)
+
+	if _, err := w.Write(htmlContent); err != nil {
+		log.Printf("ошибка записи ответа: %v", err)
+	}
 }
 
 func (s *shortenerServer) healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+
+	if _, err := w.Write([]byte("OK")); err != nil {
+		log.Printf("ошибка записи healthcheck: %v", err)
+	}
 }
 
 func (s *shortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request) {
@@ -112,8 +121,12 @@ func (s *shortenerServer) apiRootHandler(w http.ResponseWriter, r *http.Request)
 		Latest:        "v1",
 		Documentation: "/api/v1",
 	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("ошибка кодирования JSON: %v", err)
+	}
 }
 
 func (s *shortenerServer) apiV1RootHandler(w http.ResponseWriter, r *http.Request) {
@@ -126,7 +139,10 @@ func (s *shortenerServer) apiV1RootHandler(w http.ResponseWriter, r *http.Reques
 		},
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("ошибка кодирования JSON: %v", err)
+	}
 }
 
 func (s *shortenerServer) healthAPIHandler(w http.ResponseWriter, r *http.Request) {
@@ -137,7 +153,10 @@ func (s *shortenerServer) healthAPIHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("ошибка кодирования JSON: %v", err)
+	}
 }
 
 func (s *shortenerServer) shortenAPIHandler(w http.ResponseWriter, r *http.Request) {
@@ -173,7 +192,10 @@ func (s *shortenerServer) shortenAPIHandler(w http.ResponseWriter, r *http.Reque
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(response)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("ошибка кодирования JSON: %v", err)
+	}
 }
 
 // Стартует сервер на порту 8080, если порт занят или другая ошибка - возвращает её
