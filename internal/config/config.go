@@ -1,3 +1,4 @@
+// Package config содержит функции для работы с переменными окружения
 package config
 
 import (
@@ -12,7 +13,7 @@ func getEnv(key string, defaultValue string) string {
 	return defaultValue
 }
 
-// проверки для Getenv что она непустая
+// GetConnectionStringPostgres возвращает строку подключения к PostgreSQL
 func GetConnectionStringPostgres() string {
 	connectString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		getEnv("DB_HOST", "postgres"),

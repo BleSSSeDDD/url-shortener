@@ -1,0 +1,60 @@
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - misspell
+    - gofmt
+    - revive
+    - gosec
+    - unconvert      # лишние преобразования типов
+    - gocritic       # ещё больше полезных советов
+  disable:
+    - typecheck
+
+linters-settings:
+  govet:
+    check-shadowing: true
+  errcheck:
+    check-type-assertions: true
+  gocritic:
+    enabled-checks:
+      - appendCombine
+      - argOrder
+      - assignOp
+      - badCond
+      - boolExprSimplify
+      - commentedOutCode
+      - defaultCaseOrder
+      - emptyFallthrough
+      - hexLiteral
+      - ifElseChain
+      - methodExprCall
+      - singleCaseSwitch
+      - sprintfQuotedString
+      - stringXbytes
+      - switchTrue
+      - underef
+      - unlambda
+      - unslice
+      - valSwap
+      - wrapperFunc
+      - yodaStyleExpr
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-rules:
+    # Игнорируем проверку ошибок в тестах для некоторых вспомогательных функций
+    - path: _test\.go
+      text: "Error return value"
+      linters:
+        - errcheck

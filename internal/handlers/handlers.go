@@ -8,12 +8,13 @@ import (
 	"net/http"
 	"os"
 	"text/template"
+	"time"
 
 	"github.com/BleSSSeDDD/url-shortener/internal/service"
 	"github.com/go-chi/chi/v5"
 )
 
-func NewShortenerServer(shortener service.UrlShortener) ShortenerServer {
+func NewShortenerServer(shortener service.URLShortener) ShortenerServer {
 	return &shortenerServer{shortener: shortener}
 }
 
@@ -24,7 +25,7 @@ type ShortenerServer interface {
 
 // ShortenerServer нужен чтобы инкапсулировать UrlShortener с методами самого сервера, которые отношенеия к внутренней логике вообще не имеют
 type shortenerServer struct {
-	shortener service.UrlShortener
+	shortener service.URLShortener
 	server    *http.Server
 }
 
@@ -86,7 +87,7 @@ func (s *shortenerServer) defaultHandler(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func (s *shortenerServer) healthHandler(w http.ResponseWriter, r *http.Request) {
+func (s *shortenerServer) healthHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	if _, err := w.Write([]byte("OK")); err != nil {
@@ -202,29 +203,32 @@ func (s *shortenerServer) shortenAPIHandler(w http.ResponseWriter, r *http.Reque
 func (s *shortenerServer) Start() error {
 	r := chi.NewRouter()
 
-	//статика
+	// статика
 	fileServer := http.FileServer(http.Dir("./static"))
 	r.Handle("/static/*", http.StripPrefix("/static/", fileServer))
 
-	//api general
+	// api general
 	r.Get("/api", s.apiRootHandler)
 
-	//api v1
+	// api v1
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/", s.apiV1RootHandler)
 		r.Get("/health", s.healthAPIHandler)
 		r.Post("/shorten", s.shortenAPIHandler)
 	})
 
-	//html
+	// html
 	r.HandleFunc("/", s.defaultHandler)
 	r.HandleFunc("/shorten", s.shortenHandler)
 	r.HandleFunc("/r/{code}", s.redirectHandler)
 	r.Get("/health", s.healthHandler)
 
 	s.server = &http.Server{
-		Addr:    ":8080",
-		Handler: r,
+		Addr:              ":8080",
+		Handler:           r,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
 	}
 
 	if err := s.server.ListenAndServe(); err != nil {

@@ -27,7 +27,7 @@ func TestGenerateShortenedUrl(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := generateShortenedUrl()
+			got := generateShortenedURL()
 
 			switch tc.name {
 			case "тест длины ссылки":
@@ -41,8 +41,8 @@ func TestGenerateShortenedUrl(t *testing.T) {
 				}
 				assert.Equal(t, true, flag, fmt.Sprintf("ошибка в тесте %s: присутствует сивол, которого нет в CODE_CAHRSET", tc.name))
 			case "тест на различность":
-				got2 := generateShortenedUrl()
-				got3 := generateShortenedUrl()
+				got2 := generateShortenedURL()
+				got3 := generateShortenedURL()
 				assert.Equal(t, false, got == got2 && got2 == got3, fmt.Sprintf("ошибка в тесте %s: сненерировались одинаковые ссылки, ожидались разные", tc.name))
 			}
 		})

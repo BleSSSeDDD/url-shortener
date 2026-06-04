@@ -32,8 +32,8 @@ func main() {
 	}
 
 	defer func() {
-		if err := sqldb.Close(); err != nil {
-			log.Printf("error closing DB: %v", err)
+		if closeErr := sqldb.Close(); err != nil {
+			log.Printf("error closing DB: %v", closeErr)
 		}
 	}()
 
@@ -51,7 +51,7 @@ func main() {
 
 	rdb, db := storage.NewCache(redisdb), storage.NewPostgres(sqldb)
 
-	shortener := service.NewUrlShortener(rdb, db)
+	shortener := service.NewURLShortener(rdb, db)
 	shortenerServer := handlers.NewShortenerServer(shortener)
 
 	go func() {

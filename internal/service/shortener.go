@@ -18,7 +18,7 @@ const (
 	URL_CHARSET  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 
-type UrlShortener interface {
+type URLShortener interface {
 	Get(ctx context.Context, shortCode string) (originalUrl string, err error)
 	Set(ctx context.Context, url string) (shortenedUrl string, err error)
 }
@@ -30,12 +30,12 @@ type urlShortener struct {
 }
 
 // Создает структуру UrlShortener, возвращает на неё указатель
-func NewUrlShortener(cache storage.Cache, storage storage.Postgres) UrlShortener {
+func NewURLShortener(cache storage.Cache, storage storage.Postgres) URLShortener {
 	return &urlShortener{storage: storage, cache: cache}
 }
 
 // Генерирует случайную строку из 6 символов
-func generateShortenedUrl() string {
+func generateShortenedURL() string {
 	res := make([]byte, CODE_LENGTH)
 
 	for i := 0; i < CODE_LENGTH; i++ {
@@ -55,7 +55,7 @@ func generateShortenedUrl() string {
 func (u *urlShortener) Set(ctx context.Context, url string) (shortenedUrl string, err error) {
 	// Генерируем новый уникальный код
 	for i := 0; i < MAX_ATTEMPTS; i++ {
-		code := generateShortenedUrl()
+		code := generateShortenedURL()
 
 		existingCode, seterr := u.storage.SetNewPair(ctx, url, code)
 
@@ -79,11 +79,11 @@ func (u *urlShortener) Get(ctx context.Context, shortCode string) (originalUrl s
 		return originalUrl, nil
 	}
 
-	code, err, _ := u.group.Do(shortCode, func() (any, error) {
+	code, singleflightError, _ := u.group.Do(shortCode, func() (any, error) {
 		return u.storage.GetUrlFromCode(ctx, shortCode)
 	})
 
-	if err != nil {
+	if singleflightError != nil {
 		return "", err
 	}
 
