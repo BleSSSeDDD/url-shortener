@@ -1,9 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"os"
 	"os/signal"
 	"syscall"
 
@@ -15,8 +15,8 @@ import (
 )
 
 func main() {
-	stop := make(chan os.Signal, 1) //для грейсфул шатдауна
-	signal.Notify(stop, syscall.SIGTERM)
+	gracefullShutdownCtx, shutdown := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer shutdown()
 
 	serverError := make(chan error, 1) // канал для ошибок сервера
 
@@ -55,7 +55,7 @@ func main() {
 
 	//Сценарии конца программы
 	select {
-	case <-stop:
+	case <-gracefullShutdownCtx.Done():
 		fmt.Println("Сервер остановлен по сигналу")
 	case err := <-serverError:
 		fmt.Printf("Ошибка сервера: %v\n", err)
