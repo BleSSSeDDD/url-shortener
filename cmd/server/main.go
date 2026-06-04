@@ -25,18 +25,6 @@ func main() {
 	postgresString := config.GetConnectionStringPostgres()
 	redisString := config.GetConnectionStringRedis()
 
-	redisdb, err := database.CacheInit(redisString)
-	if err != nil {
-		log.Printf("Error: %v", err)
-		return
-	}
-
-	defer func() {
-		if err := redisdb.Close(); err != nil {
-			log.Printf("error closing Redis: %v", err)
-		}
-	}()
-
 	sqldb, err := database.Init(postgresString)
 	if err != nil {
 		log.Printf("Error: %v", err)
@@ -46,6 +34,18 @@ func main() {
 	defer func() {
 		if err := sqldb.Close(); err != nil {
 			log.Printf("error closing DB: %v", err)
+		}
+	}()
+
+	redisdb, err := database.CacheInit(redisString)
+	if err != nil {
+		log.Printf("Error: %v", err)
+		return
+	}
+
+	defer func() {
+		if err := redisdb.Close(); err != nil {
+			log.Printf("error closing Redis: %v", err)
 		}
 	}()
 
