@@ -1,6 +1,6 @@
 # URL Shortener
 
-A simple URL shortener service written in Go.
+<img width="1024" height="1024" alt="favicon" src="https://github.com/user-attachments/assets/7c07c528-d4d0-409f-aac6-531064003c69" />
 
 ## Features
 - REST API (HTML + JSON)
