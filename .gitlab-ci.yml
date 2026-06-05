@@ -1,0 +1,18 @@
+stages:
+  - lint
+  - test
+
+before_script:
+  - go mod download
+
+lint:
+  stage: lint
+  image: golangci/golangci-lint:latest
+  script:
+    - golangci-lint run ./...
+
+test:
+  stage: test
+  image: golang:1.21
+  script:
+    - go test -v -race -cover ./...
