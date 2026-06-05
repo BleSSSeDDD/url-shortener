@@ -221,17 +221,3 @@ Client → Handler → Service → Redis (hit?) → PostgreSQL (miss?) → Popul
 urls_and_codes(url VARCHAR(500), code VARCHAR(6) PRIMARY KEY)
 UNIQUE INDEX on url -- prevents duplicates
 ```
-
-**Startup Sequence**
-
-```text
-Init Redis + PostgreSQL connections
-
-Build storage → service → handlers
-
-Start Chi server (port 8080)
-
-Wait for SIGTERM or crash
-
-Graceful shutdown (close DB)
-```
