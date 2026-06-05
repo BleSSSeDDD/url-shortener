@@ -1,6 +1,6 @@
 # URL Shortener
 
-<img width="512" height="512" alt="favicon" src="https://github.com/user-attachments/assets/7c07c528-d4d0-409f-aac6-531064003c69" />
+<div> <img width="512" height="512" alt="favicon" src="https://github.com/user-attachments/assets/7c07c528-d4d0-409f-aac6-531064003c69" /> <div/>
 
 ## Features
 - REST API (HTML + JSON)
