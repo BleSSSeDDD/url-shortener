@@ -13,6 +13,6 @@ lint:
 
 test:
   stage: test
-  image: golang:1.21
+  image: golang:1.25.3
   script:
     - go test -v -race -cover ./...
