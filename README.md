@@ -1,6 +1,6 @@
 # URL Shortener
 
-A simple URL shortener service written in Go.
+<img width="512" height="512" alt="favicon" src="https://github.com/user-attachments/assets/7c07c528-d4d0-409f-aac6-531064003c69" />
 
 ## Features
 - REST API (HTML + JSON)
@@ -220,18 +220,4 @@ Client → Handler → Service → Redis (hit?) → PostgreSQL (miss?) → Popul
 ```sql
 urls_and_codes(url VARCHAR(500), code VARCHAR(6) PRIMARY KEY)
 UNIQUE INDEX on url -- prevents duplicates
-```
-
-**Startup Sequence**
-
-```text
-Init Redis + PostgreSQL connections
-
-Build storage → service → handlers
-
-Start Chi server (port 8080)
-
-Wait for SIGTERM or crash
-
-Graceful shutdown (close DB)
 ```
