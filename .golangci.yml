@@ -10,10 +10,9 @@ linters:
     - errcheck
     - staticcheck
     - unused
-    - gosimple
-    - revive
     - ineffassign
     - misspell
+    - revive
     - gosec
     - unconvert
     - gocritic
