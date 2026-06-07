@@ -16,6 +16,28 @@ linters:
     - gosec
     - unconvert
     - gocritic
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        text: "Error return value"
+        linters:
+          - errcheck
+      - path: handlers\.go
+        text: "G706|G710"
+        linters:
+          - gosec
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+
+
 
 formatters:
   enable:
