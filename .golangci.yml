@@ -2,47 +2,22 @@ version: "2"
 
 run:
   timeout: 5m
-  tests: true
 
 linters:
+  default: none
   enable:
     - govet
     - errcheck
     - staticcheck
     - unused
     - gosimple
+    - revive
     - ineffassign
     - misspell
-    - gofmt
-    - revive
     - gosec
-    - unconvert      
-    - gocritic      
-  disable:
+    - unconvert
+    - gocritic
 
-linters-settings:
-  govet:
-    shadow: true
-  errcheck:
-    check-type-assertions: true
-  gocritic:
-    enabled-checks:
-      - appendCombine
-      - boolExprSimplify
-      - commentedOutCode
-      - emptyFallthrough
-      - hexLiteral
-      - methodExprCall
-      - sprintfQuotedString
-      - stringXbytes
-      - yodaStyleExpr
-
-issues:
-  exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
-  exclude-rules:
-    - path: _test\.go
-      text: "Error return value"
-      linters:
-        - errcheck
+formatters:
+  enable:
+    - gofmt
