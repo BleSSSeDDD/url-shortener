@@ -19,7 +19,6 @@ linters:
     - unconvert      
     - gocritic      
   disable:
-    - typecheck
 
 linters-settings:
   govet:
