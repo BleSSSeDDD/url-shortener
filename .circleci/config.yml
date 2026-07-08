@@ -1,0 +1,29 @@
+version: 2.1
+
+jobs:
+  lint:
+    docker:
+      - image: golangci/golangci-lint:latest
+    steps:
+      - checkout
+      - run:
+          name: Run linter
+          command: golangci-lint run ./...
+
+  test:
+    docker:
+      - image: golang:1.25.3
+    steps:
+      - checkout
+      - run:
+          name: Download dependencies
+          command: go mod download
+      - run:
+          name: Run tests
+          command: go test -v -race -cover ./...
+
+workflows:
+  lint_and_test:
+    jobs:
+      - lint
+      - test
