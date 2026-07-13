@@ -36,12 +36,6 @@ const (
 	URLCharset  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 
-// URLShortener интерфейс для мока работы бизнес-логики получения и записи ссылок
-type URLShortener interface {
-	Get(ctx context.Context, shortCode string) (originalURL string, err error)
-	Set(ctx context.Context, url string) (shortenedURL string, err error)
-}
-
 type urlShortener struct {
 	cacheGetter   CacheGetter
 	cacheSetter   CacheSetter
@@ -51,7 +45,7 @@ type urlShortener struct {
 }
 
 // NewURLShortener cоздает структуру UrlShortener, возвращает на неё указатель
-func NewURLShortener(cacheGetter CacheGetter, cacheSetter CacheSetter, storageGetter StorageGetter, storageSetter StorageSetter) URLShortener {
+func NewURLShortener(cacheGetter CacheGetter, cacheSetter CacheSetter, storageGetter StorageGetter, storageSetter StorageSetter) *urlShortener {
 	return &urlShortener{cacheGetter: cacheGetter, cacheSetter: cacheSetter, storageGetter: storageGetter, storageSetter: storageSetter}
 }
 

@@ -54,7 +54,7 @@ func main() {
 	storageGetter, storageSetter := storage.NewStorageGetter(sqldb), storage.NewStorageSetter(sqldb)
 
 	shortener := service.NewURLShortener(cacheGetter, cacheSetter, storageGetter, storageSetter)
-	shortenerServer := handlers.NewShortenerServer(shortener)
+	shortenerServer := handlers.NewShortenerServer(shortener, shortener)
 
 	go func() {
 		if err := shortenerServer.Start(); err != nil &&

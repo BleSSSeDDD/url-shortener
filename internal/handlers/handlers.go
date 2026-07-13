@@ -11,13 +11,22 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/BleSSSeDDD/url-shortener/internal/service"
 	"github.com/go-chi/chi/v5"
 )
 
+// URLShortenerGetter интерфейс для бизнес-логики получения ссылок
+type URLShortenerGetter interface {
+	Get(ctx context.Context, shortCode string) (originalURL string, err error)
+}
+
+// URLShortener интерфейс для бизнес-логики получения и записи ссылок
+type URLShortenerSetter interface {
+	Set(ctx context.Context, url string) (shortenedURL string, err error)
+}
+
 // NewShortenerServer нужна для DI, инкапсулирует бизнес-логику с хттп
-func NewShortenerServer(shortener service.URLShortener) ShortenerServer {
-	return &shortenerServer{shortener: shortener}
+func NewShortenerServer(shortenerGetter URLShortenerGetter, shortenerSetter URLShortenerSetter) ShortenerServer {
+	return &shortenerServer{}
 }
 
 // ShortenerServer интерфейс для того, чтоб можно было мокать сервер
@@ -28,8 +37,9 @@ type ShortenerServer interface {
 
 // ShortenerServer нужен чтобы инкапсулировать UrlShortener с методами самого сервера, которые отношенеия к внутренней логике вообще не имеют
 type shortenerServer struct {
-	shortener service.URLShortener
-	server    *http.Server
+	shortenerGetter URLShortenerGetter
+	shortenerSetter URLShortenerSetter
+	server          *http.Server
 }
 
 func (s *shortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +54,7 @@ func (s *shortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	code, err := s.shortener.Set(r.Context(), url)
+	code, err := s.shortenerSetter.Set(r.Context(), url)
 	if err != nil {
 		log.Printf("Error: %v", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
@@ -107,7 +117,7 @@ func (s *shortenerServer) redirectHandler(w http.ResponseWriter, r *http.Request
 
 	log.Printf("Поиск кода: %s\n", shortCode)
 
-	originalURL, err := s.shortener.Get(r.Context(), shortCode)
+	originalURL, err := s.shortenerGetter.Get(r.Context(), shortCode)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -181,7 +191,7 @@ func (s *shortenerServer) shortenAPIHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	code, err := s.shortener.Set(r.Context(), req.URL)
+	code, err := s.shortenerSetter.Set(r.Context(), req.URL)
 	if err != nil {
 		http.Error(w, `{"error":"server error"}`, http.StatusInternalServerError)
 		return
