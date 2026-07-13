@@ -221,3 +221,14 @@ Client → Handler → Service → Redis (hit?) → PostgreSQL (miss?) → Popul
 urls_and_codes(url VARCHAR(500), code VARCHAR(6) PRIMARY KEY)
 UNIQUE INDEX on url -- prevents duplicates
 ```
+
+## CI/CD
+
+The project uses GitHub Actions for automatic checking and deployment.
+
+ When pushing to the `main` or `tests` branches, the following is run:
+
+1. **Linter** - code quality check.
+2. **Tests** - running unit tests with coverage.
+3. **Health-check** - building and running Docker containers, checking `/health`.
+4. **Push to Docker Hub** — automatic build and push of an image (only for `main`).
