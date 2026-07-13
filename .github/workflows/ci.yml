@@ -52,6 +52,8 @@ jobs:
         uses: actions/checkout@v5
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+      - name: Create .env file
+        run: cp .env.example .env
       - name: Build and run containers
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
       - name: Wait for server to be ready
@@ -68,7 +70,7 @@ jobs:
           exit 1
       - name: Show logs if failed
         if: failure()
-        run: docker-compose logs
+        run: docker compose logs
 
   push-to-dockerhub:
     runs-on: ubuntu-latest
