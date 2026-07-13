@@ -3,8 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,68 +13,64 @@ func TestGenerateShortenedUrl(t *testing.T) {
 	tests := []struct {
 		name string
 	}{
-		{
-			name: "тест длины ссылки",
-		},
-		{
-			name: "тест на чарсет",
-		},
-		{
-			name: "тест на различность",
-		},
+		{"тест длины ссылки"},
+		{"тест на чарсет"},
+		{"тест на различность"},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-
 			got := generateShortenedURL()
 
 			switch tc.name {
 			case "тест длины ссылки":
-				assert.Equal(t, CodeLength, len(got), fmt.Sprintf("ошибка в тесте %s: длина %d, ожидалось %d", tc.name, len(got), CodeLength))
+				assert.Equal(t, CodeLength, len(got))
 			case "тест на чарсет":
-				flag := true
 				for _, r := range got {
-					if !strings.Contains(URLCharset, string(r)) {
-						flag = false
-					}
+					assert.Contains(t, URLCharset, string(r))
 				}
-				assert.Equal(t, true, flag, fmt.Sprintf("ошибка в тесте %s: присутствует сивол, которого нет в CODE_CAHRSET", tc.name))
 			case "тест на различность":
 				got2 := generateShortenedURL()
 				got3 := generateShortenedURL()
-				assert.Equal(t, false, got == got2 && got2 == got3, fmt.Sprintf("ошибка в тесте %s: сненерировались одинаковые ссылки, ожидались разные", tc.name))
+				assert.False(t, got == got2 && got2 == got3)
 			}
 		})
 	}
 }
 
-type MockCache struct {
+type MockCacheGetter struct {
 	mock.Mock
 }
 
-func (m *MockCache) GetFromCache(ctx context.Context, code string) (string, error) {
+func (m *MockCacheGetter) GetFromCache(ctx context.Context, code string) (string, error) {
 	args := m.Called(ctx, code)
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockCache) AddToCache(ctx context.Context, code string, url string) error {
+type MockCacheSetter struct {
+	mock.Mock
+}
+
+func (m *MockCacheSetter) AddToCache(ctx context.Context, code string, url string) error {
 	args := m.Called(ctx, code, url)
 	return args.Error(0)
 }
 
-// Мок для storage.Postgres
-type MockStorage struct {
+type MockStorageGetter struct {
 	mock.Mock
 }
 
-func (m *MockStorage) GetURLFromCode(ctx context.Context, code string) (string, error) {
+func (m *MockStorageGetter) GetURLFromCode(ctx context.Context, code string) (string, error) {
 	args := m.Called(ctx, code)
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockStorage) SetNewPair(ctx context.Context, url string, code string) (string, error) {
+type MockStorageSetter struct {
+	mock.Mock
+}
+
+func (m *MockStorageSetter) SetNewPair(ctx context.Context, url string, code string) (string, error) {
 	args := m.Called(ctx, url, code)
 	return args.String(0), args.Error(1)
 }
@@ -107,13 +101,20 @@ func TestSetNewURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockCache := new(MockCache)
-			mockStorage := new(MockStorage)
+			mockGetter := new(MockCacheGetter)
+			mockSetter := new(MockCacheSetter)
+			mockStorageGetter := new(MockStorageGetter)
+			mockStorageSetter := new(MockStorageSetter)
 
-			mockStorage.On("SetNewPair", mock.Anything, tt.url, mock.AnythingOfType("string")).
+			mockStorageSetter.On("SetNewPair", mock.Anything, tt.url, mock.AnythingOfType("string")).
 				Return(tt.mockCode, tt.mockError)
 
-			shortener := NewURLShortener(mockCache, mockStorage)
+			shortener := NewURLShortener(
+				mockGetter,
+				mockSetter,
+				mockStorageGetter,
+				mockStorageSetter,
+			)
 
 			code, err := shortener.Set(context.Background(), tt.url)
 
@@ -124,7 +125,7 @@ func TestSetNewURL(t *testing.T) {
 				assert.Equal(t, tt.mockCode, code)
 			}
 
-			mockStorage.AssertExpectations(t)
+			mockStorageSetter.AssertExpectations(t)
 		})
 	}
 }
@@ -176,23 +177,30 @@ func TestGetURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockCache := new(MockCache)
-			mockStorage := new(MockStorage)
+			mockGetter := new(MockCacheGetter)
+			mockSetter := new(MockCacheSetter)
+			mockStorageGetter := new(MockStorageGetter)
+			mockStorageSetter := new(MockStorageSetter)
 
-			mockCache.On("GetFromCache", mock.Anything, tt.code).
+			mockGetter.On("GetFromCache", mock.Anything, tt.code).
 				Return(tt.cacheResult, tt.cacheError)
 
 			if tt.storageResult != "" || tt.storageError != nil {
-				mockStorage.On("GetURLFromCode", mock.Anything, tt.code).
+				mockStorageGetter.On("GetURLFromCode", mock.Anything, tt.code).
 					Return(tt.storageResult, tt.storageError)
 			}
 
 			if tt.expectCacheAdd {
-				mockCache.On("AddToCache", mock.Anything, tt.code, tt.storageResult).
+				mockSetter.On("AddToCache", mock.Anything, tt.code, tt.storageResult).
 					Return(nil)
 			}
 
-			shortener := NewURLShortener(mockCache, mockStorage)
+			shortener := NewURLShortener(
+				mockGetter,
+				mockSetter,
+				mockStorageGetter,
+				mockStorageSetter,
+			)
 
 			url, err := shortener.Get(context.Background(), tt.code)
 
@@ -203,8 +211,12 @@ func TestGetURL(t *testing.T) {
 				assert.Equal(t, tt.expectedURL, url)
 			}
 
-			mockCache.AssertExpectations(t)
-			mockStorage.AssertExpectations(t)
+			mockGetter.AssertExpectations(t)
+			mockStorageGetter.AssertExpectations(t)
+
+			if tt.expectCacheAdd {
+				mockSetter.AssertExpectations(t)
+			}
 		})
 	}
 }

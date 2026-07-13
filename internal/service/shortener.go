@@ -8,11 +8,26 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/BleSSSeDDD/url-shortener/internal/storage"
 	"github.com/jackc/pgerrcode"
 	"github.com/lib/pq"
 	"golang.org/x/sync/singleflight"
 )
+
+type CacheGetter interface {
+	GetFromCache(ctx context.Context, code string) (string, error)
+}
+
+type CacheSetter interface {
+	AddToCache(ctx context.Context, code string, url string) error
+}
+
+type StorageGetter interface {
+	GetURLFromCode(ctx context.Context, code string) (originalURL string, err error)
+}
+
+type StorageSetter interface {
+	SetNewPair(ctx context.Context, url string, code string) (string, error)
+}
 
 // Глобальные переменные для построения уникальных ссылок
 const (
@@ -28,14 +43,16 @@ type URLShortener interface {
 }
 
 type urlShortener struct {
-	cache   storage.Cache
-	storage storage.Postgres
-	group   singleflight.Group
+	cacheGetter   CacheGetter
+	cacheSetter   CacheSetter
+	storageGetter StorageGetter
+	storageSetter StorageSetter
+	group         singleflight.Group
 }
 
 // NewURLShortener cоздает структуру UrlShortener, возвращает на неё указатель
-func NewURLShortener(cache storage.Cache, storage storage.Postgres) URLShortener {
-	return &urlShortener{storage: storage, cache: cache}
+func NewURLShortener(cacheGetter CacheGetter, cacheSetter CacheSetter, storageGetter StorageGetter, storageSetter StorageSetter) URLShortener {
+	return &urlShortener{cacheGetter: cacheGetter, cacheSetter: cacheSetter, storageGetter: storageGetter, storageSetter: storageSetter}
 }
 
 // Генерирует случайную строку из 6 символов
@@ -67,7 +84,7 @@ func (u *urlShortener) Set(ctx context.Context, url string) (shortenedURL string
 	for i := 0; i < MaxAttempts; i++ {
 		code := generateShortenedURL()
 
-		existingCode, seterr := u.storage.SetNewPair(ctx, url, code)
+		existingCode, seterr := u.storageSetter.SetNewPair(ctx, url, code)
 
 		if seterr == nil {
 			return existingCode, nil
@@ -84,13 +101,13 @@ func (u *urlShortener) Set(ctx context.Context, url string) (shortenedURL string
 
 // Если ссылка есть, мы отдаем её, если нет то пустую строку и ошибку
 func (u *urlShortener) Get(ctx context.Context, shortCode string) (originalURL string, err error) {
-	originalURL, err = u.cache.GetFromCache(ctx, shortCode)
+	originalURL, err = u.cacheGetter.GetFromCache(ctx, shortCode)
 	if err == nil {
 		return originalURL, nil
 	}
 
 	code, singleflightError, _ := u.group.Do(shortCode, func() (any, error) {
-		return u.storage.GetURLFromCode(ctx, shortCode)
+		return u.storageGetter.GetURLFromCode(ctx, shortCode)
 	})
 
 	if singleflightError != nil {
@@ -102,7 +119,7 @@ func (u *urlShortener) Get(ctx context.Context, shortCode string) (originalURL s
 		return "", fmt.Errorf("не удалось скастить ответ singleflight до стринга")
 	}
 
-	if addToCacheErr := u.cache.AddToCache(ctx, shortCode, originalURL); addToCacheErr != nil {
+	if addToCacheErr := u.cacheSetter.AddToCache(ctx, shortCode, originalURL); addToCacheErr != nil {
 		log.Printf("ошибка сохранения в кеш: %v", addToCacheErr)
 	}
 

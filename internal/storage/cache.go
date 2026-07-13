@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/BleSSSeDDD/url-shortener/internal/service"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -13,18 +14,17 @@ const (
 	RedisTTL     = 60 * time.Second
 )
 
-// Cache интерфейс для мока кэша
-type Cache interface {
-	GetFromCache(ctx context.Context, code string) (string, error)
-	AddToCache(ctx context.Context, code string, url string) error
-}
-
 type cache struct {
 	rdb *redis.Client
 }
 
-// NewCache создает стурктуру для работы с редисом
-func NewCache(rdb *redis.Client) Cache {
+// NewCacheGetter для чтения из кеша
+func NewCacheGetter(rdb *redis.Client) service.CacheGetter {
+	return &cache{rdb: rdb}
+}
+
+// NewCacheSetter для записи в кеш
+func NewCacheSetter(rdb *redis.Client) service.CacheSetter {
 	return &cache{rdb: rdb}
 }
 

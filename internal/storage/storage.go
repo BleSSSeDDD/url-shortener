@@ -5,17 +5,17 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/BleSSSeDDD/url-shortener/internal/service"
 	_ "github.com/lib/pq" // бланк импорт потому что драйверы так импортируются
 )
 
-// Postgres интерфейс для мока бдшки
-type Postgres interface {
-	GetURLFromCode(ctx context.Context, code string) (originalURL string, err error)
-	SetNewPair(ctx context.Context, url string, code string) (string, error)
+// NewStotageGetter создает экземпляр структуры postgres для чтения из посмтгреса
+func NewStorageGetter(db *sql.DB) service.StorageGetter {
+	return &postgres{postgres: db}
 }
 
-// NewPostgres создает экземпляр структуры postgres для работы с бдшкой
-func NewPostgres(db *sql.DB) Postgres {
+// NewStotageSetter создает экземпляр структуры postgres для добавления данных в бд
+func NewStorageSetter(db *sql.DB) service.StorageSetter {
 	return &postgres{postgres: db}
 }
 

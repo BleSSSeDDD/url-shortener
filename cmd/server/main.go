@@ -50,9 +50,10 @@ func main() {
 		}
 	}()
 
-	rdb, db := storage.NewCache(redisdb), storage.NewPostgres(sqldb)
+	cacheGetter, cacheSetter := storage.NewCacheGetter(redisdb), storage.NewCacheSetter(redisdb)
+	storageGetter, storageSetter := storage.NewStorageGetter(sqldb), storage.NewStorageSetter(sqldb)
 
-	shortener := service.NewURLShortener(rdb, db)
+	shortener := service.NewURLShortener(cacheGetter, cacheSetter, storageGetter, storageSetter)
 	shortenerServer := handlers.NewShortenerServer(shortener)
 
 	go func() {
