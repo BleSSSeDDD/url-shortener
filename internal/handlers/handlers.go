@@ -26,7 +26,7 @@ type URLShortenerSetter interface {
 
 // NewShortenerServer нужна для DI, инкапсулирует бизнес-логику с хттп
 func NewShortenerServer(shortenerGetter URLShortenerGetter, shortenerSetter URLShortenerSetter) ShortenerServer {
-	return &shortenerServer{}
+	return &shortenerServer{shortenerGetter: shortenerGetter, shortenerSetter: shortenerSetter}
 }
 
 // ShortenerServer интерфейс для того, чтоб можно было мокать сервер

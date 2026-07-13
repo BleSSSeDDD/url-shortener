@@ -18,14 +18,10 @@ type cache struct {
 	rdb *redis.Client
 }
 
-// NewCacheGetter для чтения из кеша
-func NewCacheGetter(rdb *redis.Client) service.CacheGetter {
-	return &cache{rdb: rdb}
-}
-
-// NewCacheSetter для записи в кеш
-func NewCacheSetter(rdb *redis.Client) service.CacheSetter {
-	return &cache{rdb: rdb}
+// NewCache для чтения из кеша
+func NewCache(rdb *redis.Client) (service.CacheGetter, service.CacheSetter) {
+	newCache := &cache{rdb: rdb}
+	return newCache, newCache
 }
 
 // AddToCache добавляет новую пару ссылка - код в кэш

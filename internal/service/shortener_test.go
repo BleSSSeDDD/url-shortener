@@ -9,6 +9,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// ============================================
+// 1. Тесты для generateShortenedURL
+// ============================================
+
 func TestGenerateShortenedUrl(t *testing.T) {
 	tests := []struct {
 		name string
@@ -38,6 +42,10 @@ func TestGenerateShortenedUrl(t *testing.T) {
 		})
 	}
 }
+
+// ============================================
+// 2. Моки
+// ============================================
 
 type MockCacheGetter struct {
 	mock.Mock
@@ -75,6 +83,10 @@ func (m *MockStorageSetter) SetNewPair(ctx context.Context, url string, code str
 	return args.String(0), args.Error(1)
 }
 
+// ============================================
+// 3. Тесты для Set
+// ============================================
+
 func TestSetNewURL(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -101,22 +113,24 @@ func TestSetNewURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockGetter := new(MockCacheGetter)
-			mockSetter := new(MockCacheSetter)
-			mockStorageGetter := new(MockStorageGetter)
 			mockStorageSetter := new(MockStorageSetter)
 
 			mockStorageSetter.On("SetNewPair", mock.Anything, tt.url, mock.AnythingOfType("string")).
 				Return(tt.mockCode, tt.mockError)
 
-			shortener := NewURLShortener(
+			// Создаём заглушки для остальных зависимостей
+			mockGetter := new(MockCacheGetter)
+			mockSetter := new(MockCacheSetter)
+			mockStorageGetter := new(MockStorageGetter)
+
+			_, setter := NewURLShortener(
 				mockGetter,
 				mockSetter,
 				mockStorageGetter,
 				mockStorageSetter,
 			)
 
-			code, err := shortener.Set(context.Background(), tt.url)
+			code, err := setter.Set(context.Background(), tt.url)
 
 			if tt.wantError {
 				assert.Error(t, err)
@@ -129,6 +143,10 @@ func TestSetNewURL(t *testing.T) {
 		})
 	}
 }
+
+// ============================================
+// 4. Тесты для Get
+// ============================================
 
 func TestGetURL(t *testing.T) {
 	tests := []struct {
@@ -195,14 +213,14 @@ func TestGetURL(t *testing.T) {
 					Return(nil)
 			}
 
-			shortener := NewURLShortener(
+			getter, _ := NewURLShortener(
 				mockGetter,
 				mockSetter,
 				mockStorageGetter,
 				mockStorageSetter,
 			)
 
-			url, err := shortener.Get(context.Background(), tt.code)
+			url, err := getter.Get(context.Background(), tt.code)
 
 			if tt.wantError {
 				assert.Error(t, err)

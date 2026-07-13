@@ -10,13 +10,9 @@ import (
 )
 
 // NewStotageGetter создает экземпляр структуры postgres для чтения из посмтгреса
-func NewStorageGetter(db *sql.DB) service.StorageGetter {
-	return &postgres{postgres: db}
-}
-
-// NewStotageSetter создает экземпляр структуры postgres для добавления данных в бд
-func NewStorageSetter(db *sql.DB) service.StorageSetter {
-	return &postgres{postgres: db}
+func NewStorage(db *sql.DB) (service.StorageGetter, service.StorageSetter) {
+	pg := &postgres{postgres: db}
+	return pg, pg
 }
 
 type postgres struct {

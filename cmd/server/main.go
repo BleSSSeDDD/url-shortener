@@ -50,11 +50,11 @@ func main() {
 		}
 	}()
 
-	cacheGetter, cacheSetter := storage.NewCacheGetter(redisdb), storage.NewCacheSetter(redisdb)
-	storageGetter, storageSetter := storage.NewStorageGetter(sqldb), storage.NewStorageSetter(sqldb)
+	cacheGetter, cacheSetter := storage.NewCache(redisdb)
+	storageGetter, storageSetter := storage.NewStorage(sqldb)
 
-	shortener := service.NewURLShortener(cacheGetter, cacheSetter, storageGetter, storageSetter)
-	shortenerServer := handlers.NewShortenerServer(shortener, shortener)
+	shortenerSetter, shortenerGetter := service.NewURLShortener(cacheGetter, cacheSetter, storageGetter, storageSetter)
+	shortenerServer := handlers.NewShortenerServer(shortenerSetter, shortenerGetter)
 
 	go func() {
 		if err := shortenerServer.Start(); err != nil &&

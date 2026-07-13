@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/big"
 
+	"github.com/BleSSSeDDD/url-shortener/internal/handlers"
 	"github.com/jackc/pgerrcode"
 	"github.com/lib/pq"
 	"golang.org/x/sync/singleflight"
@@ -45,8 +46,9 @@ type urlShortener struct {
 }
 
 // NewURLShortener cоздает структуру UrlShortener, возвращает на неё указатель
-func NewURLShortener(cacheGetter CacheGetter, cacheSetter CacheSetter, storageGetter StorageGetter, storageSetter StorageSetter) *urlShortener {
-	return &urlShortener{cacheGetter: cacheGetter, cacheSetter: cacheSetter, storageGetter: storageGetter, storageSetter: storageSetter}
+func NewURLShortener(cacheGetter CacheGetter, cacheSetter CacheSetter, storageGetter StorageGetter, storageSetter StorageSetter) (handlers.URLShortenerGetter, handlers.URLShortenerSetter) {
+	short := &urlShortener{cacheGetter: cacheGetter, cacheSetter: cacheSetter, storageGetter: storageGetter, storageSetter: storageSetter}
+	return short, short
 }
 
 // Генерирует случайную строку из 6 символов
