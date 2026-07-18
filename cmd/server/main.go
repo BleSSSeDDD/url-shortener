@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os/signal"
@@ -18,7 +19,14 @@ import (
 )
 
 func main() {
-	gracefullShutdownCtx, shutdown := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	if err := run(); err != nil {
+		// Ненулевой код выхода, чтобы оркестратор понял, что старт провалился.
+		log.Fatalf("фатальная ошибка: %v", err)
+	}
+}
+
+func run() error {
+	gracefulCtx, shutdown := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer shutdown()
 
 	serverError := make(chan error, 1) // канал для ошибок сервера
@@ -28,33 +36,31 @@ func main() {
 
 	sqldb, err := database.Init(postgresString)
 	if err != nil {
-		log.Printf("Error: %v", err)
-		return
+		return fmt.Errorf("инициализация postgres: %w", err)
 	}
 
 	defer func() {
-		if closeErr := sqldb.Close(); err != closeErr {
-			log.Printf("error closing DB: %v", closeErr)
+		if closeErr := sqldb.Close(); closeErr != nil {
+			log.Printf("ошибка закрытия postgres: %v", closeErr)
 		}
 	}()
 
 	redisdb, err := database.CacheInit(redisString)
 	if err != nil {
-		log.Printf("Error: %v", err)
-		return
+		return fmt.Errorf("инициализация redis: %w", err)
 	}
 
 	defer func() {
-		if err := redisdb.Close(); err != nil {
-			log.Printf("error closing Redis: %v", err)
+		if closeErr := redisdb.Close(); closeErr != nil {
+			log.Printf("ошибка закрытия redis: %v", closeErr)
 		}
 	}()
 
 	cacheGetter, cacheSetter := storage.NewCache(redisdb)
 	storageGetter, storageSetter := storage.NewStorage(sqldb)
 
-	shortenerSetter, shortenerGetter := service.NewURLShortener(cacheGetter, cacheSetter, storageGetter, storageSetter)
-	shortenerServer := handlers.NewShortenerServer(shortenerSetter, shortenerGetter)
+	shortenerGetter, shortenerSetter := service.NewURLShortener(cacheGetter, cacheSetter, storageGetter, storageSetter)
+	shortenerServer := handlers.NewShortenerServer(shortenerGetter, shortenerSetter)
 
 	go func() {
 		if err := shortenerServer.Start(); err != nil &&
@@ -67,11 +73,10 @@ func main() {
 
 	// Сценарии конца программы
 	select {
-	case <-gracefullShutdownCtx.Done():
+	case <-gracefulCtx.Done():
 		log.Println("Сервер будет остановлен по сигналу")
 	case err := <-serverError:
-		log.Printf("Ошибка сервера: %v\n", err)
-		return
+		return fmt.Errorf("ошибка сервера: %w", err)
 	}
 
 	shutdown()
@@ -80,8 +85,9 @@ func main() {
 	defer shutdownCancel()
 
 	if err := shortenerServer.Shutdown(shutdownCtx); err != nil {
-		log.Printf("Ошибка выключения сервера: %v\n", err)
+		return fmt.Errorf("выключение сервера: %w", err)
 	}
 
 	log.Println("Сервер остановлен")
+	return nil
 }

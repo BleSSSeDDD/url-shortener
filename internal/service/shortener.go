@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -76,23 +77,29 @@ func generateShortenedURL() string {
 //
 // ЛИБО если такое уже есть, то отдаём чё есть
 func (u *urlShortener) Set(ctx context.Context, url string) (shortenedURL string, err error) {
-	// Генерируем новый уникальный код
+	// Генерируем код и пытаемся сохранить пару. При коллизии по первичному ключу
+	// code пробуем сгенерировать другой код, пока не исчерпаем попытки.
 	for i := 0; i < MaxAttempts; i++ {
 		code := generateShortenedURL()
 
-		existingCode, seterr := u.storageSetter.SetNewPair(ctx, url, code)
-
+		resultCode, seterr := u.storageSetter.SetNewPair(ctx, url, code)
 		if seterr == nil {
-			return existingCode, nil
-		} else if pgErr, ok := seterr.(*pq.Error); ok {
-			if pgErr.Code == pgerrcode.UniqueViolation {
-				return existingCode, nil
-			}
-			return "", seterr
+			// Успех: либо вставили новую пару, либо url уже был и ON CONFLICT (url)
+			// вернул его существующий код.
+			return resultCode, nil
 		}
+
+		var pgErr *pq.Error
+		if errors.As(seterr, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			// Коллизия сгенерированного code с уже существующим — пробуем снова.
+			continue
+		}
+
+		// Прочие ошибки ретраем не исправить.
+		return "", seterr
 	}
 
-	return "", fmt.Errorf("не получилось сгенерировать код за %d попыток", MaxAttempts)
+	return "", fmt.Errorf("не получилось сгенерировать уникальный код за %d попыток", MaxAttempts)
 }
 
 // Если ссылка есть, мы отдаем её, если нет то пустую строку и ошибку

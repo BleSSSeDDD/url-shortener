@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/jackc/pgerrcode"
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -15,30 +17,37 @@ import (
 
 func TestGenerateShortenedUrl(t *testing.T) {
 	tests := []struct {
-		name string
+		name  string
+		check func(t *testing.T, got string)
 	}{
-		{"тест длины ссылки"},
-		{"тест на чарсет"},
-		{"тест на различность"},
+		{
+			name: "длина кода",
+			check: func(t *testing.T, got string) {
+				assert.Equal(t, CodeLength, len(got))
+			},
+		},
+		{
+			name: "символы из чарсета",
+			check: func(t *testing.T, got string) {
+				for _, r := range got {
+					assert.Contains(t, URLCharset, string(r))
+				}
+			},
+		},
+		{
+			name: "коды различаются",
+			check: func(t *testing.T, got string) {
+				got2 := generateShortenedURL()
+				got3 := generateShortenedURL()
+				assert.False(t, got == got2 && got2 == got3)
+			},
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got := generateShortenedURL()
-
-			switch tc.name {
-			case "тест длины ссылки":
-				assert.Equal(t, CodeLength, len(got))
-			case "тест на чарсет":
-				for _, r := range got {
-					assert.Contains(t, URLCharset, string(r))
-				}
-			case "тест на различность":
-				got2 := generateShortenedURL()
-				got3 := generateShortenedURL()
-				assert.False(t, got == got2 && got2 == got3)
-			}
+			tc.check(t, generateShortenedURL())
 		})
 	}
 }
@@ -142,6 +151,56 @@ func TestSetNewURL(t *testing.T) {
 			mockStorageSetter.AssertExpectations(t)
 		})
 	}
+}
+
+// TestSetCodeCollisionRetries: при коллизии сгенерированного кода Set должен
+// сгенерировать новый код и повторить, а не возвращать пустую строку.
+func TestSetCodeCollisionRetries(t *testing.T) {
+	mockStorageSetter := new(MockStorageSetter)
+	pgErr := &pq.Error{Code: pgerrcode.UniqueViolation}
+
+	// Первая попытка коллизится по PK code, вторая — успешна.
+	mockStorageSetter.On("SetNewPair", mock.Anything, "https://example.com", mock.AnythingOfType("string")).
+		Return("", pgErr).Once()
+	mockStorageSetter.On("SetNewPair", mock.Anything, "https://example.com", mock.AnythingOfType("string")).
+		Return("abc123", nil).Once()
+
+	_, setter := NewURLShortener(
+		new(MockCacheGetter),
+		new(MockCacheSetter),
+		new(MockStorageGetter),
+		mockStorageSetter,
+	)
+
+	code, err := setter.Set(context.Background(), "https://example.com")
+
+	assert.NoError(t, err)
+	assert.Equal(t, "abc123", code)
+	mockStorageSetter.AssertNumberOfCalls(t, "SetNewPair", 2)
+	mockStorageSetter.AssertExpectations(t)
+}
+
+// TestSetCodeCollisionExhausted: если все попытки коллизятся, Set обязан вернуть
+// ошибку, а не пустой код без ошибки.
+func TestSetCodeCollisionExhausted(t *testing.T) {
+	mockStorageSetter := new(MockStorageSetter)
+	pgErr := &pq.Error{Code: pgerrcode.UniqueViolation}
+
+	mockStorageSetter.On("SetNewPair", mock.Anything, "https://example.com", mock.AnythingOfType("string")).
+		Return("", pgErr)
+
+	_, setter := NewURLShortener(
+		new(MockCacheGetter),
+		new(MockCacheSetter),
+		new(MockStorageGetter),
+		mockStorageSetter,
+	)
+
+	code, err := setter.Set(context.Background(), "https://example.com")
+
+	assert.Error(t, err)
+	assert.Empty(t, code)
+	mockStorageSetter.AssertNumberOfCalls(t, "SetNewPair", MaxAttempts)
 }
 
 // ============================================

@@ -4,15 +4,41 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
-	"os"
-	"text/template"
+	"net/url"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 )
+
+// maxURLLength соответствует VARCHAR(500) в схеме БД.
+const maxURLLength = 500
+
+// validateURL проверяет, что строка — корректный http(s) URL допустимой длины.
+func validateURL(raw string) error {
+	if len(raw) > maxURLLength {
+		return fmt.Errorf("URL длиннее %d символов", maxURLLength)
+	}
+
+	parsed, err := url.ParseRequestURI(raw)
+	if err != nil {
+		return fmt.Errorf("некорректный URL: %w", err)
+	}
+
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("недопустимая схема %q: разрешены только http и https", parsed.Scheme)
+	}
+
+	if parsed.Host == "" {
+		return errors.New("в URL отсутствует хост")
+	}
+
+	return nil
+}
 
 // URLShortenerGetter интерфейс для бизнес-логики получения ссылок
 type URLShortenerGetter interface {
@@ -40,21 +66,27 @@ type shortenerServer struct {
 	shortenerGetter URLShortenerGetter
 	shortenerSetter URLShortenerSetter
 	server          *http.Server
+	templates       *template.Template
 }
 
 func (s *shortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
 	}
 
-	url := r.FormValue("url")
-	if url == "" {
+	rawURL := r.FormValue("url")
+	if rawURL == "" {
 		http.Error(w, "URL is required", http.StatusBadRequest)
 		return
 	}
 
-	code, err := s.shortenerSetter.Set(r.Context(), url)
+	if err := validateURL(rawURL); err != nil {
+		http.Error(w, "Некорректный URL", http.StatusBadRequest)
+		return
+	}
+
+	code, err := s.shortenerSetter.Set(r.Context(), rawURL)
 	if err != nil {
 		log.Printf("Error: %v", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
@@ -67,36 +99,22 @@ func (s *shortenerServer) shortenHandler(w http.ResponseWriter, r *http.Request)
 	}
 	shortURL := fmt.Sprintf("http://%s/r/%s", host, code)
 
-	tmpl, err := template.ParseFiles("./templates/shorten.html")
-	if err != nil {
-		log.Printf("Ошибка парсинга шаблона shorten.html: %v", err)
-		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
-		return
-	}
-
 	data := struct {
 		OriginalURL string
 		ShortURL    string
-	}{url, shortURL}
+	}{rawURL, shortURL}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.Execute(w, data); err != nil {
-		log.Printf("Ошибка выполнения шаблона: %v", err)
+	if err := s.templates.ExecuteTemplate(w, "shorten.html", data); err != nil {
+		log.Printf("Ошибка выполнения шаблона shorten.html: %v", err)
 	}
 }
 
 func (s *shortenerServer) defaultHandler(w http.ResponseWriter, _ *http.Request) {
-	htmlContent, err := os.ReadFile("./templates/index.html")
-	if err != nil {
-		log.Printf("ошибка парсинга шаблона index.html: %v", err)
-		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
-		return
-	}
-
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-	if _, err := w.Write(htmlContent); err != nil {
-		log.Printf("ошибка записи ответа: %v", err)
+	if err := s.templates.ExecuteTemplate(w, "index.html", nil); err != nil {
+		log.Printf("ошибка выполнения шаблона index.html: %v", err)
 	}
 }
 
@@ -191,6 +209,11 @@ func (s *shortenerServer) shortenAPIHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	if err := validateURL(req.URL); err != nil {
+		http.Error(w, `{"error":"invalid url"}`, http.StatusBadRequest)
+		return
+	}
+
 	code, err := s.shortenerSetter.Set(r.Context(), req.URL)
 	if err != nil {
 		http.Error(w, `{"error":"server error"}`, http.StatusInternalServerError)
@@ -214,6 +237,13 @@ func (s *shortenerServer) shortenAPIHandler(w http.ResponseWriter, r *http.Reque
 
 // Стартует сервер на порту 8080, если порт занят или другая ошибка - возвращает её
 func (s *shortenerServer) Start() error {
+	// Шаблоны парсим один раз при старте, а не на каждый запрос.
+	tmpl, err := template.ParseFiles("./templates/index.html", "./templates/shorten.html")
+	if err != nil {
+		return fmt.Errorf("парсинг HTML-шаблонов: %w", err)
+	}
+	s.templates = tmpl
+
 	r := chi.NewRouter()
 
 	// статика
@@ -244,11 +274,7 @@ func (s *shortenerServer) Start() error {
 		WriteTimeout:      10 * time.Second,
 	}
 
-	if err := s.server.ListenAndServe(); err != nil {
-		return err
-	}
-
-	return nil
+	return s.server.ListenAndServe()
 }
 
 func (s *shortenerServer) Shutdown(shutdownCtx context.Context) error {
