@@ -10,7 +10,7 @@ import (
 
 // глобальные переменные для работы с ттл и тайм-айтом в запросах к редису
 const (
-	RedisTineout = 1 * time.Second
+	RedisTimeout = 1 * time.Second
 	RedisTTL     = 60 * time.Second
 )
 
@@ -26,7 +26,7 @@ func NewCache(rdb *redis.Client) (service.CacheGetter, service.CacheSetter) {
 
 // AddToCache добавляет новую пару ссылка - код в кэш
 func (cache *cache) AddToCache(parentCtx context.Context, code string, url string) error {
-	ctx, cancel := context.WithTimeout(parentCtx, RedisTineout)
+	ctx, cancel := context.WithTimeout(parentCtx, RedisTimeout)
 	defer cancel()
 
 	if err := cache.rdb.Set(ctx, code, url, RedisTTL).Err(); err != nil {
@@ -37,7 +37,7 @@ func (cache *cache) AddToCache(parentCtx context.Context, code string, url strin
 }
 
 func (cache *cache) GetFromCache(parentCtx context.Context, code string) (url string, err error) {
-	ctx, cancel := context.WithTimeout(parentCtx, RedisTineout)
+	ctx, cancel := context.WithTimeout(parentCtx, RedisTimeout)
 	defer cancel()
 
 	response := cache.rdb.Get(ctx, code)
