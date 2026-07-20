@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // maxURLLength соответствует VARCHAR(500) в схеме БД.
@@ -237,7 +238,6 @@ func (s *shortenerServer) shortenAPIHandler(w http.ResponseWriter, r *http.Reque
 
 // Стартует сервер на порту 8080, если порт занят или другая ошибка - возвращает её
 func (s *shortenerServer) Start() error {
-	// Шаблоны парсим один раз при старте, а не на каждый запрос.
 	tmpl, err := template.ParseFiles("./templates/index.html", "./templates/shorten.html")
 	if err != nil {
 		return fmt.Errorf("парсинг HTML-шаблонов: %w", err)
@@ -245,6 +245,9 @@ func (s *shortenerServer) Start() error {
 	s.templates = tmpl
 
 	r := chi.NewRouter()
+
+	r.Use(Metrics)
+	r.Handle("/metrics", promhttp.Handler())
 
 	// статика
 	fileServer := http.FileServer(http.Dir("./static"))
