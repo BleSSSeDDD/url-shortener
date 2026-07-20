@@ -10,6 +10,7 @@ import (
 	"math/big"
 
 	"github.com/BleSSSeDDD/url-shortener/internal/handlers"
+	"github.com/BleSSSeDDD/url-shortener/internal/metrics"
 	"github.com/jackc/pgerrcode"
 	"github.com/lib/pq"
 	"golang.org/x/sync/singleflight"
@@ -86,6 +87,7 @@ func (u *urlShortener) Set(ctx context.Context, url string) (shortenedURL string
 		if seterr == nil {
 			// Успех: либо вставили новую пару, либо url уже был и ON CONFLICT (url)
 			// вернул его существующий код.
+			metrics.URLsShortenedTotal.Inc()
 			return resultCode, nil
 		}
 
@@ -106,8 +108,10 @@ func (u *urlShortener) Set(ctx context.Context, url string) (shortenedURL string
 func (u *urlShortener) Get(ctx context.Context, shortCode string) (originalURL string, err error) {
 	originalURL, err = u.cacheGetter.GetFromCache(ctx, shortCode)
 	if err == nil {
+		metrics.CacheRequests.WithLabelValues("hit").Inc()
 		return originalURL, nil
 	}
+	metrics.CacheRequests.WithLabelValues("miss").Inc()
 
 	code, singleflightError, _ := u.group.Do(shortCode, func() (any, error) {
 		return u.storageGetter.GetURLFromCode(ctx, shortCode)
