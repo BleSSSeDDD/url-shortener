@@ -9,6 +9,7 @@
 - Chi router for clean routing
 - Docker containers with multi-network setup
 - Traefik as reverse proxy
+- Prometheus + Grafana monitoring out of the box
 
 ## Tech Stack
 - **Go 1.25+** — core language
@@ -17,6 +18,7 @@
 - **Redis 7+** — caching layer
 - **Docker + Docker Compose** — containerization
 - **Traefik** — reverse proxy, load balancing
+- **Prometheus + Grafana** — metrics collection and dashboards
 
 ## Browser View
 
@@ -49,6 +51,14 @@
     "code": "abc123"
   }
   ```
+
+## Monitoring
+
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000` — pre-provisioned `URL Shortener` dashboard (RPS, cache hit ratio, p95 latency)
+- App metrics are exposed on an internal port (`:9100/metrics`), not reachable from outside the network — Prometheus scrapes it directly
+
+See [docs/monitoring.md](docs/monitoring.md) for the full breakdown (metric types, cardinality, PromQL cheatsheet) and a self-check quiz.
 
 ## Prerequisites
 - Docker & Docker Compose
@@ -121,9 +131,12 @@ url-shortener/
 │   ├── config/           # Environment configuration
 │   ├── database/         # Database connection initialization
 │   ├── handlers/         # HTTP handlers and routing
+│   ├── metrics/          # Prometheus metric definitions
 │   ├── service/          # Business logic layer
 │   └── storage/          # Data access layer (PostgreSQL + Redis)
 ├── migrations/           # Database schema migrations
+├── monitoring/           # Prometheus config + Grafana provisioning
+├── docs/                 # monitoring.md — deep dive + quiz
 ├── static/               # Static assets (CSS, favicon)
 ├── templates/            # HTML templates
 ├── main.go               # Application bootstrap
@@ -200,10 +213,11 @@ Health: GET /health → 200 OK
 ```text
 Traefik (port 80)
     ↕ proxy-app-network
-Go Server (port 8080)
+Go Server (port 8080, metrics on internal :9100)
     ↕ app-db-network
-Redis + PostgreSQL
+Redis + PostgreSQL + Prometheus (scrapes :9100) + Grafana
 Two networks isolate DB traffic from proxy traffic (security).
+Metrics port 9100 is not published — reachable only inside app-db-network.
 ```
 
 **Data Flow**
@@ -230,5 +244,5 @@ The project uses GitHub Actions for automatic checking and deployment.
 
 1. **Linter** - code quality check.
 2. **Tests** - running unit tests with coverage.
-3. **Health-check** - building and running Docker containers, checking `/health`.
+3. **e2e** - building and running the full Docker Compose stack, running end-to-end tests against it.
 4. **Push to Docker Hub** — automatic build and push of an image (only for `main`).

@@ -72,13 +72,6 @@ services:
       - "traefik.http.routers.server-url-shortener.rule=PathPrefix(`/`)"
       - "traefik.http.routers.server-url-shortener.entrypoints=web"
       - "traefik.http.services.server-url-shortener.loadbalancer.server.url=http://url-shortener-server.url-shortener_proxy-app-network:8080"
-      # тут жесть, но это надо чтобы /metrics не было видно наружу
-      - "traefik.http.routers.metrics-deny.rule=PathPrefix(`/metrics`)"
-      - "traefik.http.routers.metrics-deny.entrypoints=web"
-      - "traefik.http.routers.metrics-deny.priority=100"
-      - "traefik.http.routers.metrics-deny.service=server-url-shortener"
-      - "traefik.http.routers.metrics-deny.middlewares=metrics-ipallow"
-      - "traefik.http.middlewares.metrics-ipallow.ipallowlist.sourcerange=127.0.0.1/32"
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
       interval: 5s

@@ -67,6 +67,7 @@ type shortenerServer struct {
 	shortenerGetter URLShortenerGetter
 	shortenerSetter URLShortenerSetter
 	server          *http.Server
+	metricsServer   *http.Server
 	templates       *template.Template
 }
 
@@ -247,7 +248,6 @@ func (s *shortenerServer) Start() error {
 	r := chi.NewRouter()
 
 	r.Use(Metrics)
-	r.Handle("/metrics", promhttp.Handler())
 
 	// статика
 	fileServer := http.FileServer(http.Dir("./static"))
@@ -277,10 +277,31 @@ func (s *shortenerServer) Start() error {
 		WriteTimeout:      10 * time.Second,
 	}
 
+	// Отдельный сервер только для метрик на внутреннем порту 9100. Наружу этот
+	// порт не публикуется — /metrics доступен лишь Prometheus по внутренней
+	// сети, поэтому прятать его на уровне traefik больше не нужно.
+	s.metricsServer = &http.Server{
+		Addr:              ":9100",
+		Handler:           promhttp.Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	go func() {
+		if err := s.metricsServer.ListenAndServe(); err != nil &&
+			!errors.Is(err, http.ErrServerClosed) {
+			log.Printf("сервер метрик остановлен с ошибкой: %v", err)
+		}
+	}()
+
 	return s.server.ListenAndServe()
 }
 
 func (s *shortenerServer) Shutdown(shutdownCtx context.Context) error {
+	if s.metricsServer != nil {
+		if err := s.metricsServer.Shutdown(shutdownCtx); err != nil {
+			log.Printf("ошибка остановки сервера метрик: %v", err)
+		}
+	}
+
 	if s.server == nil {
 		return nil
 	}
