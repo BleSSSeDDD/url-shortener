@@ -72,6 +72,13 @@ services:
       - "traefik.http.routers.server-url-shortener.rule=PathPrefix(`/`)"
       - "traefik.http.routers.server-url-shortener.entrypoints=web"
       - "traefik.http.services.server-url-shortener.loadbalancer.server.url=http://url-shortener-server.url-shortener_proxy-app-network:8080"
+      # тут жесть, но это надо чтобы /metrics не было видно наружу
+      - "traefik.http.routers.metrics-deny.rule=PathPrefix(`/metrics`)"
+      - "traefik.http.routers.metrics-deny.entrypoints=web"
+      - "traefik.http.routers.metrics-deny.priority=100"
+      - "traefik.http.routers.metrics-deny.service=server-url-shortener"
+      - "traefik.http.routers.metrics-deny.middlewares=metrics-ipallow"
+      - "traefik.http.middlewares.metrics-ipallow.ipallowlist.sourcerange=127.0.0.1/32"
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
       interval: 5s
@@ -91,6 +98,23 @@ services:
     restart: unless-stopped
     depends_on:
       - server
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: url-shortener-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - app-db-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
 
 volumes:
   postgres_data:
