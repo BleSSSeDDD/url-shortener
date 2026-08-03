@@ -1,29 +1,144 @@
+# CircleCI
+# lint -> test -> e2e 
+
 version: 2.1
+
+commands:
+  skip_if_only_docs:
+    steps:
+      - run:
+          name: Пропустить, если менялись только доки и ansible
+          command: |
+            if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+              echo "Нет предыдущего коммита — продолжаем"
+              exit 0
+            fi
+            CHANGED=$(git diff --name-only HEAD~1 HEAD)
+            if [ -z "$CHANGED" ]; then exit 0; fi
+            echo "$CHANGED"
+            if ! echo "$CHANGED" | grep -qvE '^(ansible/|docs/|.*\.md$|.*\.txt$)'; then
+              echo "Изменения только в доках/ansible — пропускаем"
+              circleci-agent step halt
+            fi
+
+  install_go:
+    parameters:
+      version:
+        type: string
+        default: "1.25.3"
+    steps:
+      - run:
+          name: Установить Go << parameters.version >>
+          command: |
+            curl -sSL "https://go.dev/dl/go<< parameters.version >>.linux-amd64.tar.gz" \
+              | sudo tar -C /usr/local -xz
+            echo 'export PATH=$PATH:/usr/local/go/bin' >> "$BASH_ENV"
 
 jobs:
   lint:
     docker:
-      - image: golangci/golangci-lint:latest
+      - image: cimg/go:1.25
     steps:
       - checkout
+      - skip_if_only_docs
       - run:
-          name: Run linter
-          command: golangci-lint run ./...
+          name: Установить golangci-lint
+          command: |
+            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
+              | sh -s -- -b "$(go env GOPATH)/bin" latest
+      - run:
+          name: Запустить линтер
+          command: golangci-lint run --timeout=5m ./...
 
   test:
     docker:
-      - image: golang:1.25.3
+      - image: cimg/go:1.25
+    steps:
+      - checkout
+      - skip_if_only_docs
+      - run:
+          name: Скачать зависимости
+          command: go mod download
+      - run:
+          name: Запустить тесты
+          command: go test -v -race -cover -coverprofile=coverage.out ./...
+      - run:
+          name: Показать покрытие
+          command: go tool cover -func=coverage.out
+
+  e2e:
+    machine:
+      image: ubuntu-2404:current
+    steps:
+      - checkout
+      - skip_if_only_docs
+      - install_go
+      - run:
+          name: Создать .env
+          command: cp .env.example .env
+      - run:
+          name: Собрать и поднять контейнеры
+          command: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
+      - run:
+          name: Дождаться готовности сервера
+          command: |
+            for i in $(seq 1 30); do
+              if curl -s -f http://localhost:80/health; then
+                echo "Server is ready"
+                exit 0
+              fi
+              echo "Waiting for server... ($i/30)"
+              sleep 2
+            done
+            echo "Server did not become ready in time"
+            exit 1
+      - run:
+          name: Запустить e2e-тесты
+          command: BASE_URL=http://localhost:80 go test -tags e2e -v ./test/e2e/...
+      - run:
+          name: Логи при падении
+          when: on_fail
+          command: docker compose -f docker-compose.yml -f docker-compose.ci.yml logs
+
+  push-to-dockerhub:
+    machine:
+      image: ubuntu-2404:current
     steps:
       - checkout
       - run:
-          name: Download dependencies
-          command: go mod download
-      - run:
-          name: Run tests
-          command: go test -v -race -cover ./...
+          name: Логин, сборка и публикация
+          command: |
+            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+            docker build -t blessseddd/url-shortener-server:latest .
+            docker push blessseddd/url-shortener-server:latest
 
 workflows:
-  lint_and_test:
+  ci:
     jobs:
-      - lint
-      - test
+      - lint:
+          filters:
+            branches:
+              only:
+                - main
+                - tests
+      - test:
+          filters:
+            branches:
+              only:
+                - main
+                - tests
+      - e2e:
+          requires:
+            - lint
+            - test
+          filters:
+            branches:
+              only:
+                - main
+                - tests
+      - push-to-dockerhub:
+          requires:
+            - e2e
+          filters:
+            branches:
+              only: main

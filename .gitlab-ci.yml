@@ -1,18 +1,115 @@
+# GitLab CI
+# lint -> test -> e2e -> push to dockerhub
+
 stages:
   - lint
   - test
+  - e2e
+  - release
 
-before_script:
-  - go mod download
+variables:
+  GO_IMAGE: golang:1.25.3
+  DOCKER_IMAGE: blessseddd/url-shortener-server
+
+.ci_rules: &ci_rules
+  rules:
+    - if: '$CI_COMMIT_BRANCH != "main" && $CI_COMMIT_BRANCH != "tests"'
+      when: never
+    - changes:
+        - "**/*.go"
+        - "go.mod"
+        - "go.sum"
+        - "Dockerfile"
+        - "docker-compose*.yml"
+        - ".gitlab-ci.yml"
+        - ".golangci.yml"
+        - ".env.example"
+        - "migrations/**/*"
+        - "static/**/*"
+        - "templates/**/*"
+      when: on_success
+    - when: never
 
 lint:
   stage: lint
   image: golangci/golangci-lint:latest
+  <<: *ci_rules
   script:
-    - golangci-lint run ./...
+    - golangci-lint run --timeout=5m ./...
 
 test:
   stage: test
-  image: golang:1.25.3
+  image: $GO_IMAGE
+  <<: *ci_rules
   script:
-    - go test -v -race -cover ./...
+    - go mod download
+    - go test -v -race -cover -coverprofile=coverage.out ./...
+    - go tool cover -func=coverage.out
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+
+e2e:
+  stage: e2e
+  image: $GO_IMAGE
+  services:
+    - name: docker:27-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  <<: *ci_rules
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq ca-certificates curl gnupg
+    - install -m 0755 -d /etc/apt/keyrings
+    - curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+    - chmod a+r /etc/apt/keyrings/docker.asc
+    - echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
+    - apt-get update -qq && apt-get install -y -qq docker-ce-cli docker-compose-plugin
+  script:
+    - cp .env.example .env
+    - docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
+    - |
+      for i in $(seq 1 30); do
+        if curl -s -f http://docker:80/health; then
+          echo "Server is ready"
+          break
+        fi
+        echo "Waiting for server... ($i/30)"
+        sleep 2
+        if [ "$i" = "30" ]; then
+          echo "Server did not become ready in time"
+          exit 1
+        fi
+      done
+    - BASE_URL=http://docker:80 go test -tags e2e -v ./test/e2e/...
+  after_script:
+    - if [ "$CI_JOB_STATUS" != "success" ]; then docker compose -f docker-compose.yml -f docker-compose.ci.yml logs; fi
+
+push-to-dockerhub:
+  stage: release
+  image: docker:27-cli
+  services:
+    - name: docker:27-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  rules:
+    - if: '$CI_COMMIT_BRANCH != "main"'
+      when: never
+    - changes:
+        - "**/*.go"
+        - "go.mod"
+        - "go.sum"
+        - "Dockerfile"
+        - "docker-compose*.yml"
+        - ".gitlab-ci.yml"
+        - ".env.example"
+        - "migrations/**/*"
+        - "static/**/*"
+        - "templates/**/*"
+      when: on_success
+    - when: never
+  script:
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    - docker build -t $DOCKER_IMAGE:latest .
+    - docker push $DOCKER_IMAGE:latest

@@ -1,3 +1,6 @@
+# CircleCI
+# lint -> test -> e2e -> push to dockerhub
+
 name: URL-Shortener CI
 
 on:
@@ -6,9 +9,10 @@ on:
       - main
       - tests
     paths-ignore:
-      - 'README.md'
-      - '*.md'
-      - '**.txt'
+      - '**/*.md'
+      - '**/*.txt'
+      - 'docs/**'
+      - 'ansible/**'
 
 jobs:
   lint:
