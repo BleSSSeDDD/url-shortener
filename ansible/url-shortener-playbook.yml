@@ -1,0 +1,8 @@
+  - name: Базовая настройка машин
+    hosts: lab
+    become: yes
+    roles: 
+      - common
+      - docker
+      - url-shortener
+  

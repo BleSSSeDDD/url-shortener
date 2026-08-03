@@ -1,4 +1,0 @@
-
-  - name: testHandler
-    debug:
-      msg: Конфиг обновился

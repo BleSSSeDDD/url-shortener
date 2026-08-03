@@ -3,19 +3,3 @@
     name: [curl]
     state: present
     update_cache: yes
-
-- name: Создать папку
-  file:
-    path: /home/ansible/test
-    state: directory
-    mode: '0755'
-    owner: ansible
-    group: ansible
-
-- name: Развернуть конфиг из шаблона
-  template:
-    src: test.conf.j2
-    dest: /home/ansible/test/config
-    owner: ansible
-    group: ansible
-  notify: testHandler
