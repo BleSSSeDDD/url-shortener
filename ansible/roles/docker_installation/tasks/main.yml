@@ -1,15 +1,11 @@
   - name: Add docker repo
     deb822_repository:
-      name: docker # ну я че ебу как это называется, не вижу нигде названия самого deb пакета, я пока вообще не знаю что это такое
+      name: docker
       types: deb
-      uris: https://download.docker.com/linux/ubuntu/ # тут тоже не уверен, ну откуда я знаю какую именно ссылку сюда надо-то блять
-      components: # ну по идее они написаны на официальном сайте докера, по идее я надеюсь правильно понял смысл слов компоненты
-        - docker-ce 
-        - docker-ce-cli 
-        - containerd.io 
-        - docker-buildx-plugin 
-        - docker-compose-plugin
-      mode: '0755' # это тоже увидел просто в официальной доке, но там установка просто скриптом bash, но права там вроде такие
+      uris: https://download.docker.com/linux/ubuntu/
+      suites: "{{ ansible_distribution_release }}"
+      signed_by: https://download.docker.com/linux/ubuntu/gpg
+      components: stable
 
   - name: Docker installation
     apt: 
@@ -18,11 +14,14 @@
       update_cache: yes
 
   - name: Start docker service
-    service: 
-    # тут вообще максимально хуй знает, что писать, я ваще не шарю за службы в линуксе пока
+    service:
+      name: docker
+      state: started
+      enabled: yes
 
   - name: Add user to docker group
     ansible.builtin.user:
+      name: "{{ ansible_user }}"
       groups: docker
-      append: yes # или state: present я хуй знает в чем разница
+      append: yes
       
