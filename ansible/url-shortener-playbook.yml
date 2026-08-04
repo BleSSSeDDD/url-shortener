@@ -1,8 +1,0 @@
-  - name: url-shortener-installation
-    hosts: lab
-    become: yes
-    roles: 
-      - common
-      - docker-installation
-      - url-shortener
-  

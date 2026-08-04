@@ -1,2 +1,5 @@
-  - name: set env variables
-    template: 
+  - name: installing troubleshooting soft
+    ansible.builtin.apt:
+        name: [htop, curl, ca-certificates]
+        state: present
+        update_cache: yes
