@@ -8,13 +8,13 @@
       components: stable
 
   - name: Docker installation
-    apt: 
+    ansible.builtin.apt: 
       name: [docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin]
       state: present
       update_cache: yes
 
   - name: Start docker service
-    service:
+    ansible.builtin.service:
       name: docker
       state: started
       enabled: yes
