@@ -1,5 +1,2 @@
-- name: Установить пакет
-  apt:
-    name: [curl]
-    state: present
-    update_cache: yes
+  - name: set env variables
+    template: 
