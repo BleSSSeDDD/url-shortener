@@ -1,0 +1,42 @@
+  - name: Create a directory
+    ansible.builtin.file:
+      path: /opt/url_shortener
+      state: directory
+      mode: '0775'
+
+  - name: Create config
+    ansible.builtin.template:
+      src: url_shortener.conf.j2
+      dest: /opt/url_shortener/.env
+      owner: user
+      group: sudo
+      mode: '0554'
+
+  - name: Copy compose file
+    ansible.builtin.copy:
+      src: "{{ playbook_dir }}/../docker-compose.yml"
+      dest: /opt/url_shortener/docker-compose.yml
+      owner: user
+      group: sudo
+      mode: '0664'
+
+  - name: Copy migrations directory
+    ansible.builtin.copy:
+      src: "{{ playbook_dir }}/../migrations"
+      dest: /opt/url_shortener/
+      owner: user
+      group: sudo
+      mode: '0664' 
+
+  - name: Copy monitoring directory
+    ansible.builtin.copy:
+      src: "{{ playbook_dir }}/../monitoring"
+      dest: /opt/url_shortener/
+      owner: user
+      group: sudo
+      mode: '0664' 
+
+  - name: Start containers
+    community.docker.docker_compose_v2:
+      project_src: /opt/url_shortener
+    register: output

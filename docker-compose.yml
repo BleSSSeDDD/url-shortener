@@ -1,3 +1,4 @@
+name: url-shortener
 services:
   redis:
     image: redis:latest
@@ -71,7 +72,8 @@ services:
       - traefik.enable=true
       - "traefik.http.routers.server-url-shortener.rule=PathPrefix(`/`)"
       - "traefik.http.routers.server-url-shortener.entrypoints=web"
-      - "traefik.http.services.server-url-shortener.loadbalancer.server.url=http://url-shortener-server.url-shortener_proxy-app-network:8080"
+      - "traefik.http.services.server-url-shortener.loadbalancer.server.port=8080"
+      - "traefik.docker.network=url-shortener_proxy-app-network"
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
       interval: 5s

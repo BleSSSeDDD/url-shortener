@@ -3,5 +3,5 @@ postgres_port: 5432
 postgres_user: postgres
 postgres_password: 12345678
 postgres_db: urls_and_codes
-edis_host: redis
+redis_host: redis
 redis_port: 6379

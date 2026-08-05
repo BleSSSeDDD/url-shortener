@@ -83,6 +83,73 @@ See [docs/monitoring.md](docs/monitoring.md) for the full breakdown (metric type
 
 The service will be available at `http://localhost`.
 
+## Deployment with Ansible
+
+The `ansible/` directory provisions a bare Ubuntu host and brings the whole stack up
+with a single command. Tested on Ubuntu 26.04 against three hosts in parallel.
+
+### What the playbook does
+
+| Role | Purpose |
+|---|---|
+| `common` | base packages (`curl`, `htop`, `ca-certificates`) |
+| `docker_installation` | registers the official Docker apt repository together with its GPG key, installs Docker Engine, CLI, containerd and the Compose plugin, enables the service, adds the deploy user to the `docker` group |
+| `url_shortener` | creates `/opt/url_shortener`, renders `.env` from a Jinja2 template, copies `docker-compose.yml`, `migrations/` and `monitoring/`, then starts the stack |
+
+### Requirements
+
+Control machine:
+
+```bash
+ansible-galaxy collection install community.docker
+```
+
+Target hosts: Ubuntu, SSH access by key, passwordless `sudo` for the deploy user.
+
+### Inventory
+
+`ansible/inventory.yml`:
+
+```yaml
+url_shortener:
+  hosts:
+    node1:
+      ansible_host: 192.168.1.10
+    node2:
+      ansible_host: 192.168.1.11
+  vars:
+    ansible_user: user
+```
+
+Group names must not contain hyphens - Ansible exposes them as Jinja variables.
+
+### Configuration
+
+Application settings live in `ansible/roles/url_shortener/defaults/main.yml` and are
+rendered into `.env` on the target host. Override them per host or per group through
+`host_vars/` and `group_vars/`.
+
+### Run
+
+```bash
+cd ansible
+ansible-playbook -i inventory.yml url_shortener_playbook.yml
+```
+
+The playbook is idempotent - a second run over an unchanged host reports `changed=0`.
+
+### Verify
+
+```bash
+curl http://<host>/health
+```
+
+### Note on secrets
+
+Database credentials currently sit in `defaults/main.yml` in plain text, which is
+acceptable only for a local lab. For anything beyond that they belong in
+`ansible-vault`.
+
 ## Environment Variables
 
 | Variable | Description | Default |
@@ -97,29 +164,48 @@ The service will be available at `http://localhost`.
 
 ## Docker Networking Configuration for Traefik
 
-When using Traefik with Docker Compose across multiple networks, explicit URL configuration in Traefik labels is **required** for reliable service discovery:
+The `server` container is attached to two Docker networks:
+
+- `proxy-app-network` - shared with Traefik, carries inbound HTTP traffic
+- `app-db-network` - shared with Postgres and Redis
+
+When a container belongs to more than one network, Traefik cannot infer which one to
+use and picks one on its own. If it picks `app-db-network` - where Traefik itself is
+not present - the entrypoint still accepts the TCP connection, but the request never
+reaches the backend and simply times out (`HTTP 000`, not a 502).
+
+Docker assigns subnets in network-creation order, so the pick can differ from host to
+host. The same Compose file was observed working on one machine and hanging on another.
+
+**Required configuration:**
 
 ```yaml
 labels:
-  - "traefik.http.services.server-url-shortener.loadbalancer.server.url=http://url-shortener-server.url-shortener_proxy-app-network:8080"
+  - "traefik.docker.network=url-shortener_proxy-app-network"
+  - "traefik.http.services.server-url-shortener.loadbalancer.server.port=8080"
 ```
 
-**Reason:**  
-1. **Multiple Networks**: The application connects to two separate Docker networks (`proxy-app-network` for Traefik routing and `app-db-network` for database communication)  
-2. **Docker DNS Limitation**: While Traefik automatically discovers containers by name, it cannot determine which network interface to use when a container belongs to multiple networks  
-3. **FQDN Requirement**: Using the explicit fully-qualified container name (`<service_name>.<network_name>`) ensures proper routing within the correct network segment  
+- `traefik.docker.network` names the network Traefik must use to reach the container.
+  This is what removes the ambiguity.
+- `loadbalancer.server.port` supplies only the port - Traefik resolves the container
+  address itself through the Docker provider.
 
-**Why This Configuration Works:**  
-- The container `url-shortener-server` participates in both `proxy-app-network` and `app-db-network`  
-- Traefik runs only in `proxy-app-network`, so it needs the explicit network-scoped address to establish communication  
-- Without this explicit URL, Traefik might resolve the container name but fail to route traffic correctly between networks  
+**Pin the project name:**
 
-**Alternative Approaches Considered:**  
-- Using a single shared network for all services (simpler but less segmented)  
-- Configuring network aliases (proved less reliable in this multi-network setup)  
-- Additional Traefik healthchecks (helpful but don't solve the network routing issue)  
+```yaml
+name: url-shortener
+```
 
-This configuration provides stable routing without requiring complex healthcheck dependencies between Traefik and the backend service.
+Compose prefixes generated network and volume names with the project name, which
+defaults to the directory name. Without pinning it, deploying to `/opt/url_shortener`
+produces `url_shortener_proxy-app-network` while a local checkout in `url-shortener/`
+produces `url-shortener_proxy-app-network`, and any label referencing the network
+breaks.
+
+**Avoid:** hardcoding a fully qualified backend address such as
+`loadbalancer.server.url=http://<container>.<network>:8080`. It duplicates
+Compose-generated names inside the configuration and silently breaks whenever the
+project name or deployment path changes.
 
 ## Architecture
 
