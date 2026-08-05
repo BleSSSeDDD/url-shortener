@@ -4,6 +4,6 @@
     roles: 
       - common
       - docker_installation
-      # - url-shortener
+      - url-shortener
       
   
