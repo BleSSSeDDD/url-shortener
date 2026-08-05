@@ -19,6 +19,7 @@
 - **Docker + Docker Compose** — containerization
 - **Traefik** — reverse proxy, load balancing
 - **Prometheus + Grafana** — metrics collection and dashboards
+- **Ansible** — provisioning and deployment (bare host to running stack in one command)
 
 ## Browser View
 
