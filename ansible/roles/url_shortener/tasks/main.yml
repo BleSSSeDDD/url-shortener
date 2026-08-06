@@ -8,25 +8,24 @@
     ansible.builtin.template:
       src: url_shortener.conf.j2
       dest: /opt/url_shortener/.env
-      owner: user
+      owner: "{{ ansible_user }}"
       group: sudo
-      mode: '0554'
+      mode: '0640'
 
   - name: Copy files
     ansible.builtin.copy:
       src: "{{ item.src }}"
       dest: "{{ item.dest }}"
-      owner: user
+      owner: "{{ ansible_user }}"
       group: sudo
       mode: '0664'
     loop:
-      - {src: "{{ playbook_dir }}/../docker-compose.yml", dest: /opt/url_shortener/docker-compose.yml}
-      - {src: "{{ playbook_dir }}/../migrations", dest: /opt/url_shortener/}
-      - {src: "{{ playbook_dir }}/../monitoring", dest: /opt/url_shortener/}
+      - {src: "{{ playbook_dir }}/../docker-compose.yml", dest: "{{ app_dir }}/docker-compose.yml"}
+      - {src: "{{ playbook_dir }}/../migrations", dest: "{{ app_dir }}"}
+      - {src: "{{ playbook_dir }}/../monitoring", dest: "{{ app_dir }}"}
     loop_control:
       label: "{{ item.src }} -> {{ item.dest }}"
 
   - name: Start containers
     community.docker.docker_compose_v2:
-      project_src: /opt/url_shortener
-    register: output
+      project_src: "{{ app_dir }}"
