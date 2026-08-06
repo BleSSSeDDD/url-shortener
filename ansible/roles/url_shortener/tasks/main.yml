@@ -1,13 +1,13 @@
   - name: Create a directory
     ansible.builtin.file:
-      path: /opt/url_shortener
+      path: "{{ app_dir }}"
       state: directory
       mode: '0775'
 
   - name: Create config
     ansible.builtin.template:
       src: url_shortener.conf.j2
-      dest: /opt/url_shortener/.env
+      dest: "{{ app_dir }}/.env"
       owner: "{{ ansible_user }}"
       group: sudo
       mode: '0640'
@@ -26,6 +26,10 @@
     loop_control:
       label: "{{ item.src }} -> {{ item.dest }}"
 
+  - name: Pull images
+    community.docker.docker_compose_v2_pull:
+    project_src: "{{ app_dir }}"
+    
   - name: Start containers
     community.docker.docker_compose_v2:
       project_src: "{{ app_dir }}"
