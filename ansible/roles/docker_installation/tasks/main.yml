@@ -1,11 +1,23 @@
+  - name: Check if docker already installed
+    ansible.builtin.command: docker --version
+    register: docker_installed
+    changed_when: false
+    failed_when: false
+
+  - name: Print docker version
+    ansible.builtin.debug:
+      var: docker_installed.stdout
+    when: docker_installed.rc == 0
+
   - name: Add docker repo
-    deb822_repository:
+    ansible.builtin.deb822_repository:
       name: docker
       types: deb
       uris: https://download.docker.com/linux/ubuntu/
       suites: "{{ ansible_distribution_release }}"
       signed_by: https://download.docker.com/linux/ubuntu/gpg
       components: stable
+    when: ansible_os_family == "Debian"
 
   - name: Docker installation
     ansible.builtin.apt: 

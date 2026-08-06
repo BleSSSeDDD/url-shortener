@@ -23,6 +23,8 @@
       - {src: "{{ playbook_dir }}/../docker-compose.yml", dest: /opt/url_shortener/docker-compose.yml}
       - {src: "{{ playbook_dir }}/../migrations", dest: /opt/url_shortener/}
       - {src: "{{ playbook_dir }}/../monitoring", dest: /opt/url_shortener/}
+    loop_control:
+      label: "{{ item.src }} -> {{ item.dest }}"
 
   - name: Start containers
     community.docker.docker_compose_v2:
