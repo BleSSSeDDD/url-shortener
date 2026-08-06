@@ -12,29 +12,17 @@
       group: sudo
       mode: '0554'
 
-  - name: Copy compose file
+  - name: Copy files
     ansible.builtin.copy:
-      src: "{{ playbook_dir }}/../docker-compose.yml"
-      dest: /opt/url_shortener/docker-compose.yml
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
       owner: user
       group: sudo
       mode: '0664'
-
-  - name: Copy migrations directory
-    ansible.builtin.copy:
-      src: "{{ playbook_dir }}/../migrations"
-      dest: /opt/url_shortener/
-      owner: user
-      group: sudo
-      mode: '0664' 
-
-  - name: Copy monitoring directory
-    ansible.builtin.copy:
-      src: "{{ playbook_dir }}/../monitoring"
-      dest: /opt/url_shortener/
-      owner: user
-      group: sudo
-      mode: '0664' 
+    loop:
+      - {src: "{{ playbook_dir }}/../docker-compose.yml", dest: /opt/url_shortener/docker-compose.yml}
+      - {src: "{{ playbook_dir }}/../migrations", dest: /opt/url_shortener/}
+      - {src: "{{ playbook_dir }}/../monitoring", dest: /opt/url_shortener/}
 
   - name: Start containers
     community.docker.docker_compose_v2:
