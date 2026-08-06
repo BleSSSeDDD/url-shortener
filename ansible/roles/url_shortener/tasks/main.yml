@@ -28,7 +28,7 @@
 
   - name: Pull images
     community.docker.docker_compose_v2_pull:
-    project_src: "{{ app_dir }}"
+      project_src: "{{ app_dir }}"
     
   - name: Start containers
     community.docker.docker_compose_v2:
