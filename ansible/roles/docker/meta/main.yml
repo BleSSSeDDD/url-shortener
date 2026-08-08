@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  author: BleSSSeDDD
+  description: Installs Docker Engine from the official upstream repository
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+  galaxy_tags:
+    - docker
+    - infrastructure
+
+dependencies: []

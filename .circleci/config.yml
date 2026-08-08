@@ -1,23 +1,31 @@
 # CircleCI
-# lint -> test -> e2e 
+# lint -> test -> e2e -> push to dockerhub
+# ansible-lint runs independently of the Go pipeline.
+#
+# Secrets are set in Project Settings -> Environment Variables:
+#   DOCKER_USERNAME, DOCKER_PASSWORD
 
 version: 2.1
 
 commands:
+  # CircleCI has no built-in paths-ignore (only the paid path-filtering orb),
+  # so changed files are inspected manually. When nothing outside docs and
+  # ansible/ changed, the job is stopped with `circleci-agent step halt`,
+  # which ends it as successful.
   skip_if_only_docs:
     steps:
       - run:
-          name: Пропустить, если менялись только доки и ansible
+          name: Skip when only docs or ansible changed
           command: |
             if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
-              echo "Нет предыдущего коммита — продолжаем"
+              echo "No previous commit - continuing"
               exit 0
             fi
             CHANGED=$(git diff --name-only HEAD~1 HEAD)
             if [ -z "$CHANGED" ]; then exit 0; fi
             echo "$CHANGED"
             if ! echo "$CHANGED" | grep -qvE '^(ansible/|docs/|.*\.md$|.*\.txt$)'; then
-              echo "Изменения только в доках/ansible — пропускаем"
+              echo "Only docs or ansible changed - skipping"
               circleci-agent step halt
             fi
 
@@ -28,7 +36,7 @@ commands:
         default: "1.25.3"
     steps:
       - run:
-          name: Установить Go << parameters.version >>
+          name: Install Go << parameters.version >>
           command: |
             curl -sSL "https://go.dev/dl/go<< parameters.version >>.linux-amd64.tar.gz" \
               | sudo tar -C /usr/local -xz
@@ -42,12 +50,12 @@ jobs:
       - checkout
       - skip_if_only_docs
       - run:
-          name: Установить golangci-lint
+          name: Install golangci-lint
           command: |
             curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
               | sh -s -- -b "$(go env GOPATH)/bin" latest
       - run:
-          name: Запустить линтер
+          name: Run linter
           command: golangci-lint run --timeout=5m ./...
 
   test:
@@ -57,16 +65,19 @@ jobs:
       - checkout
       - skip_if_only_docs
       - run:
-          name: Скачать зависимости
+          name: Download dependencies
           command: go mod download
       - run:
-          name: Запустить тесты
+          name: Run tests
           command: go test -v -race -cover -coverprofile=coverage.out ./...
       - run:
-          name: Показать покрытие
+          name: Show coverage
           command: go tool cover -func=coverage.out
 
   e2e:
+    # machine, not docker: a real Docker daemon on the same host is required
+    # so that localhost works, the same way it does in GitHub Actions.
+    # With setup_remote_docker the daemon would live on a separate host.
     machine:
       image: ubuntu-2404:current
     steps:
@@ -74,13 +85,13 @@ jobs:
       - skip_if_only_docs
       - install_go
       - run:
-          name: Создать .env
+          name: Create .env
           command: cp .env.example .env
       - run:
-          name: Собрать и поднять контейнеры
+          name: Build and start containers
           command: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
       - run:
-          name: Дождаться готовности сервера
+          name: Wait for server
           command: |
             for i in $(seq 1 30); do
               if curl -s -f http://localhost:80/health; then
@@ -93,10 +104,10 @@ jobs:
             echo "Server did not become ready in time"
             exit 1
       - run:
-          name: Запустить e2e-тесты
+          name: Run e2e tests
           command: BASE_URL=http://localhost:80 go test -tags e2e -v ./test/e2e/...
       - run:
-          name: Логи при падении
+          name: Dump logs on failure
           when: on_fail
           command: docker compose -f docker-compose.yml -f docker-compose.ci.yml logs
 
@@ -106,11 +117,26 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Логин, сборка и публикация
+          name: Log in, build and push
           command: |
             echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
             docker build -t blessseddd/url-shortener-server:latest .
             docker push blessseddd/url-shortener-server:latest
+
+  ansible-lint:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Install ansible-lint
+          command: pip install --quiet ansible-lint
+      - run:
+          name: Install collections
+          command: cd ansible && ansible-galaxy collection install -r requirements.yml
+      - run:
+          name: Run ansible-lint
+          command: cd ansible && ansible-lint --profile production
 
 workflows:
   ci:
@@ -142,3 +168,9 @@ workflows:
           filters:
             branches:
               only: main
+      - ansible-lint:
+          filters:
+            branches:
+              only:
+                - main
+                - tests

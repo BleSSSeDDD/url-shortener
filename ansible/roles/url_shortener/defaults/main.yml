@@ -7,3 +7,4 @@ postgres_db: urls_and_codes
 redis_host: redis
 redis_port: 6379
 app_dir: /opt/url_shortener
+src_dir: "{{ playbook_dir }}/.."

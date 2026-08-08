@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  author: BleSSSeDDD
+  description: Deploys the url-shortener stack with Docker Compose
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+  galaxy_tags:
+    - docker
+    - infrastructure
+
+dependencies: []
