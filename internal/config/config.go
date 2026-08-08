@@ -1,4 +1,4 @@
-// Package config содержит функции для работы с переменными окружения
+// Package config reads configuration from environment variables.
 package config
 
 import (
@@ -13,7 +13,7 @@ func getEnv(key string, defaultValue string) string {
 	return defaultValue
 }
 
-// GetConnectionStringPostgres возвращает строку подключения к PostgreSQL
+// GetConnectionStringPostgres returns the PostgreSQL connection string.
 func GetConnectionStringPostgres() string {
 	connectString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		getEnv("DB_HOST", "postgres"),
@@ -26,7 +26,7 @@ func GetConnectionStringPostgres() string {
 	return connectString
 }
 
-// GetConnectionStringRedis возвращает строку подключения к Redis
+// GetConnectionStringRedis returns the Redis connection string.
 func GetConnectionStringRedis() string {
 	redisHost := getEnv("REDIS_HOST", "redis")
 	if redisHost == "" {

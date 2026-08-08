@@ -12,7 +12,7 @@ import (
 )
 
 // ============================================
-// 1. Тесты для generateShortenedURL
+// 1. Tests for generateShortenedURL
 // ============================================
 
 func TestGenerateShortenedUrl(t *testing.T) {
@@ -21,13 +21,13 @@ func TestGenerateShortenedUrl(t *testing.T) {
 		check func(t *testing.T, got string)
 	}{
 		{
-			name: "длина кода",
+			name: "code length",
 			check: func(t *testing.T, got string) {
 				assert.Equal(t, CodeLength, len(got))
 			},
 		},
 		{
-			name: "символы из чарсета",
+			name: "characters from the charset",
 			check: func(t *testing.T, got string) {
 				for _, r := range got {
 					assert.Contains(t, URLCharset, string(r))
@@ -35,7 +35,7 @@ func TestGenerateShortenedUrl(t *testing.T) {
 			},
 		},
 		{
-			name: "коды различаются",
+			name: "codes differ",
 			check: func(t *testing.T, got string) {
 				got2 := generateShortenedURL()
 				got3 := generateShortenedURL()
@@ -53,7 +53,7 @@ func TestGenerateShortenedUrl(t *testing.T) {
 }
 
 // ============================================
-// 2. Моки
+// 2. Mocks
 // ============================================
 
 type MockCacheGetter struct {
@@ -93,7 +93,7 @@ func (m *MockStorageSetter) SetNewPair(ctx context.Context, url string, code str
 }
 
 // ============================================
-// 3. Тесты для Set
+// 3. Tests for Set
 // ============================================
 
 func TestSetNewURL(t *testing.T) {
@@ -105,14 +105,14 @@ func TestSetNewURL(t *testing.T) {
 		wantError bool
 	}{
 		{
-			name:      "успешное создание",
+			name:      "created successfully",
 			url:       "https://example.com",
 			mockCode:  "abc123",
 			mockError: nil,
 			wantError: false,
 		},
 		{
-			name:      "ошибка БД",
+			name:      "database error",
 			url:       "https://example.com",
 			mockCode:  "",
 			mockError: errors.New("db error"),
@@ -127,7 +127,7 @@ func TestSetNewURL(t *testing.T) {
 			mockStorageSetter.On("SetNewPair", mock.Anything, tt.url, mock.AnythingOfType("string")).
 				Return(tt.mockCode, tt.mockError)
 
-			// Создаём заглушки для остальных зависимостей
+			// Stub out the remaining dependencies
 			mockGetter := new(MockCacheGetter)
 			mockSetter := new(MockCacheSetter)
 			mockStorageGetter := new(MockStorageGetter)
@@ -153,13 +153,13 @@ func TestSetNewURL(t *testing.T) {
 	}
 }
 
-// TestSetCodeCollisionRetries: при коллизии сгенерированного кода Set должен
-// сгенерировать новый код и повторить, а не возвращать пустую строку.
+// TestSetCodeCollisionRetries: on a generated code collision Set must produce
+// a new code and retry instead of returning an empty string.
 func TestSetCodeCollisionRetries(t *testing.T) {
 	mockStorageSetter := new(MockStorageSetter)
 	pgErr := &pq.Error{Code: pgerrcode.UniqueViolation}
 
-	// Первая попытка коллизится по PK code, вторая — успешна.
+	// The first attempt collides on the code primary key, the second succeeds.
 	mockStorageSetter.On("SetNewPair", mock.Anything, "https://example.com", mock.AnythingOfType("string")).
 		Return("", pgErr).Once()
 	mockStorageSetter.On("SetNewPair", mock.Anything, "https://example.com", mock.AnythingOfType("string")).
@@ -180,8 +180,8 @@ func TestSetCodeCollisionRetries(t *testing.T) {
 	mockStorageSetter.AssertExpectations(t)
 }
 
-// TestSetCodeCollisionExhausted: если все попытки коллизятся, Set обязан вернуть
-// ошибку, а не пустой код без ошибки.
+// TestSetCodeCollisionExhausted: when every attempt collides Set must return
+// an error rather than an empty code with a nil error.
 func TestSetCodeCollisionExhausted(t *testing.T) {
 	mockStorageSetter := new(MockStorageSetter)
 	pgErr := &pq.Error{Code: pgerrcode.UniqueViolation}
@@ -204,7 +204,7 @@ func TestSetCodeCollisionExhausted(t *testing.T) {
 }
 
 // ============================================
-// 4. Тесты для Get
+// 4. Tests for Get
 // ============================================
 
 func TestGetURL(t *testing.T) {
@@ -220,7 +220,7 @@ func TestGetURL(t *testing.T) {
 		wantError      bool
 	}{
 		{
-			name:           "из кеша",
+			name:           "from cache",
 			code:           "abc123",
 			cacheResult:    "https://example.com",
 			cacheError:     nil,
@@ -229,7 +229,7 @@ func TestGetURL(t *testing.T) {
 			wantError:      false,
 		},
 		{
-			name:           "из БД (кеш пуст)",
+			name:           "from database (cache miss)",
 			code:           "abc123",
 			cacheResult:    "",
 			cacheError:     errors.New("cache miss"),
@@ -240,7 +240,7 @@ func TestGetURL(t *testing.T) {
 			wantError:      false,
 		},
 		{
-			name:           "не найдено",
+			name:           "not found",
 			code:           "notfound",
 			cacheResult:    "",
 			cacheError:     errors.New("cache miss"),

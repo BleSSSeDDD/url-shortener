@@ -1,4 +1,4 @@
-// Package service пакет для бизнес-логики сокращения ссылок
+// Package service holds the URL shortening business logic.
 package service
 
 import (
@@ -32,7 +32,7 @@ type StorageSetter interface {
 	SetNewPair(ctx context.Context, url string, code string) (string, error)
 }
 
-// Глобальные переменные для построения уникальных ссылок
+// Parameters used to build unique short codes.
 const (
 	CodeLength  = 6
 	MaxAttempts = 10
@@ -47,20 +47,20 @@ type urlShortener struct {
 	group         singleflight.Group
 }
 
-// NewURLShortener cоздает структуру UrlShortener, возвращает на неё указатель
+// NewURLShortener builds a URLShortener and returns a pointer to it.
 func NewURLShortener(cacheGetter CacheGetter, cacheSetter CacheSetter, storageGetter StorageGetter, storageSetter StorageSetter) (handlers.URLShortenerGetter, handlers.URLShortenerSetter) {
 	short := &urlShortener{cacheGetter: cacheGetter, cacheSetter: cacheSetter, storageGetter: storageGetter, storageSetter: storageSetter}
 	return short, short
 }
 
-// Генерирует случайную строку из 6 символов
+// Generates a random six-character string.
 func generateShortenedURL() string {
 	res := make([]byte, CodeLength)
 
 	for i := 0; i < CodeLength; i++ {
 		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(URLCharset))))
 		if err != nil {
-			log.Printf("ошибка при генерации криптостойкой последовательности: %v", err)
+			log.Printf("failed to generate a cryptographically secure sequence: %v", err)
 			res[i] = URLCharset[0]
 			continue
 		}
@@ -70,41 +70,41 @@ func generateShortenedURL() string {
 	return string(res)
 }
 
-// Принимает: оригинальный URL
+// Takes: the original URL.
 //
-// Возвращает: короткий код и ошибку
+// Returns: the short code and an error.
 //
-// Логика: генерирует код до тех пор, пока он не будет уникальным, сохраняет в базу, возвращает код
+// Generates codes until one is unique, stores the pair and returns the code.
 //
-// ЛИБО если такое уже есть, то отдаём чё есть
+// If the URL is already stored, the existing code is returned instead.
 func (u *urlShortener) Set(ctx context.Context, url string) (shortenedURL string, err error) {
-	// Генерируем код и пытаемся сохранить пару. При коллизии по первичному ключу
-	// code пробуем сгенерировать другой код, пока не исчерпаем попытки.
+	// Generate a code and try to store the pair. On a primary key collision
+	// on code, generate another one until the attempts are exhausted.
 	for i := 0; i < MaxAttempts; i++ {
 		code := generateShortenedURL()
 
 		resultCode, seterr := u.storageSetter.SetNewPair(ctx, url, code)
 		if seterr == nil {
-			// Успех: либо вставили новую пару, либо url уже был и ON CONFLICT (url)
-			// вернул его существующий код.
+			// Success: either a new pair was inserted, or the url already existed and
+			// ON CONFLICT (url) returned its existing code.
 			metrics.URLsShortenedTotal.Inc()
 			return resultCode, nil
 		}
 
 		var pgErr *pq.Error
 		if errors.As(seterr, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-			// Коллизия сгенерированного code с уже существующим — пробуем снова.
+			// The generated code collided with an existing one, so try again.
 			continue
 		}
 
-		// Прочие ошибки ретраем не исправить.
+		// Retrying will not fix any other error.
 		return "", seterr
 	}
 
-	return "", fmt.Errorf("не получилось сгенерировать уникальный код за %d попыток", MaxAttempts)
+	return "", fmt.Errorf("failed to generate a unique code in %d attempts", MaxAttempts)
 }
 
-// Если ссылка есть, мы отдаем её, если нет то пустую строку и ошибку
+// Returns the stored URL, or an empty string and an error when it is absent.
 func (u *urlShortener) Get(ctx context.Context, shortCode string) (originalURL string, err error) {
 	originalURL, err = u.cacheGetter.GetFromCache(ctx, shortCode)
 	if err == nil {
@@ -123,11 +123,11 @@ func (u *urlShortener) Get(ctx context.Context, shortCode string) (originalURL s
 
 	originalURL, ok := code.(string)
 	if !ok {
-		return "", fmt.Errorf("не удалось скастить ответ singleflight до стринга")
+		return "", fmt.Errorf("could not assert the singleflight result to a string")
 	}
 
 	if addToCacheErr := u.cacheSetter.AddToCache(ctx, shortCode, originalURL); addToCacheErr != nil {
-		log.Printf("ошибка сохранения в кеш: %v", addToCacheErr)
+		log.Printf("failed to store the value in cache: %v", addToCacheErr)
 	}
 
 	return originalURL, nil

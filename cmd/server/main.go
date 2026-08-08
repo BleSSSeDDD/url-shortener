@@ -1,4 +1,4 @@
-// основной пакет для запуска сервера со всеми зависимостями
+// Package main starts the HTTP server with all of its dependencies.
 package main
 
 import (
@@ -20,8 +20,8 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		// Ненулевой код выхода, чтобы оркестратор понял, что старт провалился.
-		log.Fatalf("фатальная ошибка: %v", err)
+		// Non-zero exit code so the orchestrator can tell the start failed.
+		log.Fatalf("fatal error: %v", err)
 	}
 }
 
@@ -29,30 +29,30 @@ func run() error {
 	gracefulCtx, shutdown := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer shutdown()
 
-	serverError := make(chan error, 1) // канал для ошибок сервера
+	serverError := make(chan error, 1) // carries errors raised by the HTTP server
 
 	postgresString := config.GetConnectionStringPostgres()
 	redisString := config.GetConnectionStringRedis()
 
 	sqldb, err := database.Init(postgresString)
 	if err != nil {
-		return fmt.Errorf("инициализация postgres: %w", err)
+		return fmt.Errorf("init postgres: %w", err)
 	}
 
 	defer func() {
 		if closeErr := sqldb.Close(); closeErr != nil {
-			log.Printf("ошибка закрытия postgres: %v", closeErr)
+			log.Printf("failed to close postgres: %v", closeErr)
 		}
 	}()
 
 	redisdb, err := database.CacheInit(redisString)
 	if err != nil {
-		return fmt.Errorf("инициализация redis: %w", err)
+		return fmt.Errorf("init redis: %w", err)
 	}
 
 	defer func() {
 		if closeErr := redisdb.Close(); closeErr != nil {
-			log.Printf("ошибка закрытия redis: %v", closeErr)
+			log.Printf("failed to close redis: %v", closeErr)
 		}
 	}()
 
@@ -69,14 +69,14 @@ func run() error {
 		}
 	}()
 
-	log.Println("Сервер запущен")
+	log.Println("server started")
 
-	// Сценарии конца программы
+	// Shutdown paths
 	select {
 	case <-gracefulCtx.Done():
-		log.Println("Сервер будет остановлен по сигналу")
+		log.Println("server is shutting down on signal")
 	case err := <-serverError:
-		return fmt.Errorf("ошибка сервера: %w", err)
+		return fmt.Errorf("server error: %w", err)
 	}
 
 	shutdown()
@@ -85,9 +85,9 @@ func run() error {
 	defer shutdownCancel()
 
 	if err := shortenerServer.Shutdown(shutdownCtx); err != nil {
-		return fmt.Errorf("выключение сервера: %w", err)
+		return fmt.Errorf("server shutdown: %w", err)
 	}
 
-	log.Println("Сервер остановлен")
+	log.Println("server stopped")
 	return nil
 }

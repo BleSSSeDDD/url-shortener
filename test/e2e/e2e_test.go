@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-// baseURL — адрес поднятого стека. В CI задаётся через BASE_URL (Traefik на :80),
-// локально по умолчанию бьём напрямую в сервер на :8080.
+// baseURL points at the running stack. CI sets it through BASE_URL (Traefik on :80);
+// locally it defaults to hitting the server directly on :8080.
 func baseURL() string {
 	if v := strings.TrimRight(os.Getenv("BASE_URL"), "/"); v != "" {
 		return v
@@ -22,8 +22,8 @@ func baseURL() string {
 	return "http://localhost:8080"
 }
 
-// noRedirectClient не следует за 3xx, чтобы можно было проверить сам редирект
-// (статус и заголовок Location), а не улетать на внешний сайт.
+// noRedirectClient does not follow 3xx so the redirect itself can be inspected
+// (status and Location header) instead of leaving for an external site.
 func noRedirectClient() *http.Client {
 	return &http.Client{
 		Timeout: 10 * time.Second,
@@ -38,7 +38,7 @@ type shortenResponse struct {
 	Code     string `json:"code"`
 }
 
-// shortenJSON сокращает url через JSON API и возвращает разобранный ответ.
+// shortenJSON shortens a url through the JSON API and returns the parsed response.
 func shortenJSON(t *testing.T, target string) shortenResponse {
 	t.Helper()
 
@@ -55,7 +55,7 @@ func shortenJSON(t *testing.T, target string) shortenResponse {
 
 	if resp.StatusCode != http.StatusCreated {
 		raw, _ := io.ReadAll(resp.Body)
-		t.Fatalf("POST /api/v1/shorten: ожидали 201, получили %d: %s", resp.StatusCode, raw)
+		t.Fatalf("POST /api/v1/shorten: expected 201, got %d: %s", resp.StatusCode, raw)
 	}
 
 	var out shortenResponse
@@ -63,7 +63,7 @@ func shortenJSON(t *testing.T, target string) shortenResponse {
 		t.Fatalf("decode: %v", err)
 	}
 	if out.Code == "" {
-		t.Fatal("в ответе пустой code")
+		t.Fatal("response contains an empty code")
 	}
 	return out
 }
@@ -77,11 +77,11 @@ func TestHealthEndpoints(t *testing.T) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("ожидали 200, получили %d", resp.StatusCode)
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
 		}
 		raw, _ := io.ReadAll(resp.Body)
 		if strings.TrimSpace(string(raw)) != "OK" {
-			t.Errorf("ожидали тело OK, получили %q", raw)
+			t.Errorf("expected body OK, got %q", raw)
 		}
 	})
 
@@ -93,7 +93,7 @@ func TestHealthEndpoints(t *testing.T) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("ожидали 200, получили %d", resp.StatusCode)
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
 		}
 		var out struct {
 			Status string `json:"status"`
@@ -102,13 +102,13 @@ func TestHealthEndpoints(t *testing.T) {
 			t.Fatalf("decode: %v", err)
 		}
 		if out.Status != "ok" {
-			t.Errorf(`ожидали status "ok", получили %q`, out.Status)
+			t.Errorf(`expected status "ok", got %q`, out.Status)
 		}
 	})
 }
 
-// TestShortenAndRedirect — основной сценарий: сократили ссылку и убедились, что
-// /r/{code} отдаёт 302 на исходный url.
+// TestShortenAndRedirect is the main scenario: shorten a link and verify that
+// /r/{code} returns a 302 to the original url.
 func TestShortenAndRedirect(t *testing.T) {
 	const target = "https://example.com/e2e/redirect-check"
 
@@ -121,15 +121,15 @@ func TestShortenAndRedirect(t *testing.T) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusFound {
-		t.Fatalf("ожидали 302, получили %d", resp.StatusCode)
+		t.Fatalf("expected 302, got %d", resp.StatusCode)
 	}
 	if loc := resp.Header.Get("Location"); loc != target {
-		t.Errorf("Location: ожидали %q, получили %q", target, loc)
+		t.Errorf("Location: expected %q, got %q", target, loc)
 	}
 }
 
-// TestShortenIsIdempotent — один и тот же url должен возвращать тот же код
-// (ON CONFLICT (url) в БД).
+// TestShortenIsIdempotent: the same url must always yield the same code
+// (ON CONFLICT (url) in the database).
 func TestShortenIsIdempotent(t *testing.T) {
 	const target = "https://example.com/e2e/idempotent-check"
 
@@ -137,20 +137,20 @@ func TestShortenIsIdempotent(t *testing.T) {
 	second := shortenJSON(t, target)
 
 	if first.Code != second.Code {
-		t.Errorf("один и тот же url дал разные коды: %q и %q", first.Code, second.Code)
+		t.Errorf("the same url produced different codes: %q and %q", first.Code, second.Code)
 	}
 }
 
-// TestShortenRejectsBadInput — сервер должен отвечать 400 на некорректный ввод.
+// TestShortenRejectsBadInput: the server must answer 400 on malformed input.
 func TestShortenRejectsBadInput(t *testing.T) {
 	cases := []struct {
 		name string
 		body string
 	}{
-		{"пустой url", `{"url":""}`},
-		{"битый json", `{"url":`},
-		{"схема javascript", `{"url":"javascript:alert(1)"}`},
-		{"без схемы", `{"url":"example.com"}`},
+		{"empty url", `{"url":""}`},
+		{"broken json", `{"url":`},
+		{"javascript scheme", `{"url":"javascript:alert(1)"}`},
+		{"no scheme", `{"url":"example.com"}`},
 	}
 
 	for _, c := range cases {
@@ -162,13 +162,13 @@ func TestShortenRejectsBadInput(t *testing.T) {
 			defer resp.Body.Close()
 
 			if resp.StatusCode != http.StatusBadRequest {
-				t.Errorf("ожидали 400, получили %d", resp.StatusCode)
+				t.Errorf("expected 400, got %d", resp.StatusCode)
 			}
 		})
 	}
 }
 
-// TestRedirectUnknownCodeReturns404 — неизвестный код должен давать 404, а не редирект.
+// TestRedirectUnknownCodeReturns404: an unknown code must give 404, not a redirect.
 func TestRedirectUnknownCodeReturns404(t *testing.T) {
 	resp, err := noRedirectClient().Get(baseURL() + "/r/e2e-definitely-missing")
 	if err != nil {
@@ -177,6 +177,6 @@ func TestRedirectUnknownCodeReturns404(t *testing.T) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("ожидали 404, получили %d", resp.StatusCode)
+		t.Errorf("expected 404, got %d", resp.StatusCode)
 	}
 }

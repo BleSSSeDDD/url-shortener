@@ -8,10 +8,10 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-// RedisPingTimeout нужен для делея проверок, что редис встал
+// RedisPingTimeout bounds the startup connectivity check against Redis.
 const RedisPingTimeout = 1 * time.Second
 
-// CacheInit создает новое подключение к редису
+// CacheInit opens a new Redis connection.
 func CacheInit(addr string) (*redis.Client, error) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     addr,
@@ -19,7 +19,7 @@ func CacheInit(addr string) (*redis.Client, error) {
 		DB:       0,
 	})
 
-	log.Printf("Пытаемся подключиться к редису по %s", addr)
+	log.Printf("connecting to redis at %s", addr)
 
 	var redisConnectErr error
 
@@ -30,10 +30,10 @@ func CacheInit(addr string) (*redis.Client, error) {
 	cancel()
 
 	if redisConnectErr != nil {
-		log.Println("Подключение к редису не прошло")
+		log.Println("redis connection failed")
 		return nil, redisConnectErr
 	}
-	log.Println("Подключились к редису")
+	log.Println("connected to redis")
 
 	return rdb, redisConnectErr
 }

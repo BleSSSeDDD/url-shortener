@@ -10,7 +10,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-// Metrics — middleware, снимающий RED-метрики с каждого HTTP-запроса.
+// Metrics is the middleware that records RED metrics for every HTTP request.
 func Metrics(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

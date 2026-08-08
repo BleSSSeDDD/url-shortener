@@ -12,9 +12,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
-// TestMetricsMiddleware проверяет, что middleware считает запросы по ШАБЛОНУ
-// маршрута: два запроса с разными id должны попасть в один и тот же счётчик
-// (route="/test/{id}"), а не расплодить серию на каждый URL.
+// TestMetricsMiddleware checks that the middleware counts requests by route
+// TEMPLATE: two requests with different ids must land in the same counter
+// (route="/test/{id}") instead of spawning one series per URL.
 func TestMetricsMiddleware(t *testing.T) {
 	r := chi.NewRouter()
 	r.Use(Metrics)
@@ -29,18 +29,18 @@ func TestMetricsMiddleware(t *testing.T) {
 		rec := httptest.NewRecorder()
 		r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/test/"+id, nil))
 		if rec.Code != http.StatusOK {
-			t.Fatalf("ожидали 200, получили %d", rec.Code)
+			t.Fatalf("expected 200, got %d", rec.Code)
 		}
 	}
 
 	if got := testutil.ToFloat64(counter) - before; got != 2 {
-		t.Errorf("http_requests_total{route=/test/{id}}: ожидали +2, получили +%v", got)
+		t.Errorf("http_requests_total{route=/test/{id}}: expected +2, got +%v", got)
 	}
 }
 
-// TestMetricsEndpoint проверяет, что /metrics отдаёт 200 и в теле есть наши метрики.
+// TestMetricsEndpoint checks that /metrics returns 200 and exposes our metrics.
 func TestMetricsEndpoint(t *testing.T) {
-	// гарантируем хотя бы по одному наблюдению, иначе метрика не попадёт в вывод
+	// make at least one observation, otherwise the metric is absent from the output
 	metrics.CacheRequests.WithLabelValues("hit").Inc()
 	metrics.HTTPRequestsTotal.WithLabelValues("GET", "/x", "200").Inc()
 
@@ -48,12 +48,12 @@ func TestMetricsEndpoint(t *testing.T) {
 	promhttp.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("ожидали 200 от /metrics, получили %d", rec.Code)
+		t.Fatalf("expected 200 from /metrics, got %d", rec.Code)
 	}
 	body := rec.Body.String()
 	for _, name := range []string{"http_requests_total", "urlshortener_cache_requests_total"} {
 		if !strings.Contains(body, name) {
-			t.Errorf("в выводе /metrics нет метрики %q", name)
+			t.Errorf("metric %q is missing from /metrics output", name)
 		}
 	}
 }

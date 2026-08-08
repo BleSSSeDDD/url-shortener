@@ -8,7 +8,7 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-// глобальные переменные для работы с ттл и тайм-айтом в запросах к редису
+// TTL and timeout used for Redis requests.
 const (
 	RedisTimeout = 1 * time.Second
 	RedisTTL     = 60 * time.Second
@@ -18,13 +18,13 @@ type cache struct {
 	rdb *redis.Client
 }
 
-// NewCache для чтения из кеша
+// NewCache builds the cache reader.
 func NewCache(rdb *redis.Client) (service.CacheGetter, service.CacheSetter) {
 	newCache := &cache{rdb: rdb}
 	return newCache, newCache
 }
 
-// AddToCache добавляет новую пару ссылка - код в кэш
+// AddToCache stores a url/code pair in the cache.
 func (cache *cache) AddToCache(parentCtx context.Context, code string, url string) error {
 	ctx, cancel := context.WithTimeout(parentCtx, RedisTimeout)
 	defer cancel()

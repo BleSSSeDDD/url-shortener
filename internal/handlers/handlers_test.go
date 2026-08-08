@@ -11,24 +11,24 @@ func TestValidateURL(t *testing.T) {
 		raw     string
 		wantErr bool
 	}{
-		{"обычный https", "https://example.com/path?x=1", false},
-		{"обычный http", "http://example.com", false},
-		{"без схемы", "example.com", true},
-		{"недопустимая схема javascript", "javascript:alert(1)", true},
-		{"недопустимая схема ftp", "ftp://example.com", true},
-		{"схема без хоста", "http://", true},
-		{"мусор", "not a url", true},
-		{"слишком длинный", "https://example.com/" + strings.Repeat("a", maxURLLength), true},
+		{"plain https", "https://example.com/path?x=1", false},
+		{"plain http", "http://example.com", false},
+		{"no scheme", "example.com", true},
+		{"disallowed scheme javascript", "javascript:alert(1)", true},
+		{"disallowed scheme ftp", "ftp://example.com", true},
+		{"scheme without host", "http://", true},
+		{"garbage", "not a url", true},
+		{"too long", "https://example.com/" + strings.Repeat("a", maxURLLength), true},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			err := validateURL(tc.raw)
 			if tc.wantErr && err == nil {
-				t.Errorf("validateURL(%q): ожидалась ошибка, получили nil", tc.raw)
+				t.Errorf("validateURL(%q): expected an error, got nil", tc.raw)
 			}
 			if !tc.wantErr && err != nil {
-				t.Errorf("validateURL(%q): не ожидали ошибку, получили %v", tc.raw, err)
+				t.Errorf("validateURL(%q): unexpected error: %v", tc.raw, err)
 			}
 		})
 	}
