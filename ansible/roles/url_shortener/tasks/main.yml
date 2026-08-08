@@ -1,3 +1,9 @@
+  - name: Check if secrets exist
+    ansible.builtin.assert:
+      that:
+        - postgres_password | length > 0
+      fail_msg: "postgres_password not set"
+  
   - name: Create a directory
     ansible.builtin.file:
       path: "{{ app_dir }}"
