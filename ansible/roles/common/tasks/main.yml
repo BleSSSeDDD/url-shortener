@@ -1,6 +1,7 @@
-  - name: installing troubleshooting soft
-    ansible.builtin.apt:
-        name: [htop, curl, ca-certificates]
-        state: present
-        update_cache: yes
-        cache_valid_time: 3600
+---
+- name: Installing troubleshooting soft
+  ansible.builtin.apt:
+    name: [htop, curl, ca-certificates]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600

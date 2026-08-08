@@ -1,3 +1,4 @@
+---
 postgres_host: postgres
 postgres_port: 5432
 postgres_user: postgres

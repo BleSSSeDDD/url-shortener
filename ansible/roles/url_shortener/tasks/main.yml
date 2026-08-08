@@ -1,51 +1,49 @@
-  - name: Check if secrets exist
-    ansible.builtin.assert:
-      that:
-        - postgres_password | length > 0
-      fail_msg: "postgres_password not set"
-    tags: [always]
-  
-  - name: Create a directory
-    ansible.builtin.file:
-      path: "{{ app_dir }}"
-      state: directory
-      mode: '0775'
+---
+- name: Check if secrets exist
+  ansible.builtin.assert:
+    that:
+      - postgres_password | length > 0
+    fail_msg: postgres_password not set
+  tags: [always]
+- name: Create a directory
+  ansible.builtin.file:
+    path: "{{ app_dir }}"
+    state: directory
+    mode: "0775"
 
-  - name: Create config
-    ansible.builtin.template:
-      src: url_shortener.conf.j2
-      dest: "{{ app_dir }}/.env"
-      owner: "{{ ansible_user }}"
-      group: sudo
-      mode: '0640'
+- name: Create config
+  ansible.builtin.template:
+    src: url_shortener.conf.j2
+    dest: "{{ app_dir }}/.env"
+    owner: "{{ ansible_user }}"
+    group: sudo
+    mode: "0640"
 
-  - name: Copy files
-    ansible.builtin.copy:
-      src: "{{ item.src }}"
-      dest: "{{ item.dest }}"
-      owner: "{{ ansible_user }}"
-      group: sudo
-      mode: '0664'
-    loop:
-      - {src: "{{ playbook_dir }}/../docker-compose.yml", dest: "{{ app_dir }}/docker-compose.yml"}
-      - {src: "{{ playbook_dir }}/../migrations", dest: "{{ app_dir }}"}
-      - {src: "{{ playbook_dir }}/../monitoring", dest: "{{ app_dir }}"}
-    loop_control:
-      label: "{{ item.src }} -> {{ item.dest }}"
+- name: Copy files
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ ansible_user }}"
+    group: sudo
+    mode: "0664"
+  loop:
+    - { src: "{{ playbook_dir }}/../docker-compose.yml", dest: "{{ app_dir }}/docker-compose.yml" }
+    - { src: "{{ playbook_dir }}/../migrations", dest: "{{ app_dir }}" }
+    - { src: "{{ playbook_dir }}/../monitoring", dest: "{{ app_dir }}" }
+  loop_control:
+    label: "{{ item.src }} -> {{ item.dest }}"
 
-  - name: Pull images
-    community.docker.docker_compose_v2_pull:
-      project_src: "{{ app_dir }}"
-    tags: [docker_compose]
-    
-  - name: Start containers
-    community.docker.docker_compose_v2:
-      project_src: "{{ app_dir }}"
-    tags: [docker_compose]
-
-  - name: Docker compose down -v
-    community.docker.docker_compose_v2:
-      project_src: "{{ app_dir }}"
-      state: absent
-      remove_volumes: true
-    tags: [never, wipe, full_cleanup]
+- name: Pull images
+  community.docker.docker_compose_v2_pull:
+    project_src: "{{ app_dir }}"
+  tags: [docker_compose]
+- name: Start containers
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_dir }}"
+  tags: [docker_compose]
+- name: Docker compose down -v
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_dir }}"
+    state: absent
+    remove_volumes: true
+  tags: [never, wipe, full_cleanup]

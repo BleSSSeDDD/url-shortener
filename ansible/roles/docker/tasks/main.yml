@@ -1,50 +1,50 @@
-  - name: Check if docker already installed
-    ansible.builtin.command: docker --version
-    register: docker_installed
-    changed_when: false
-    failed_when: false
+---
+- name: Check if docker already installed
+  ansible.builtin.command: docker --version
+  register: docker_installed
+  changed_when: false
+  failed_when: false
 
-  - name: Print docker version
-    ansible.builtin.debug:
-      var: docker_installed.stdout
-    when: docker_installed.rc == 0
+- name: Print docker version
+  ansible.builtin.debug:
+    var: docker_installed.stdout
+  when: docker_installed.rc == 0
 
-  - name: Add docker repo
-    ansible.builtin.deb822_repository:
-      name: docker
-      types: deb
-      uris: https://download.docker.com/linux/ubuntu/
-      suites: "{{ ansible_distribution_release }}"
-      signed_by: https://download.docker.com/linux/ubuntu/gpg
-      components: stable
-    when: ansible_os_family == "Debian"
+- name: Add docker repo
+  ansible.builtin.deb822_repository:
+    name: docker
+    types: deb
+    uris: https://download.docker.com/linux/ubuntu/
+    suites: "{{ ansible_distribution_release }}"
+    signed_by: https://download.docker.com/linux/ubuntu/gpg
+    components: stable
+  when: ansible_os_family == "Debian"
 
-  - name: Docker installation
-    ansible.builtin.apt: 
-      name: [docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin]
-      state: present
-      update_cache: yes
+- name: Docker installation
+  ansible.builtin.apt:
+    name: [docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin]
+    state: present
+    update_cache: true
 
-  - name: Start docker service
-    ansible.builtin.service:
-      name: docker
-      state: started
-      enabled: yes
+- name: Start docker service
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
 
-  - name: Add user to docker group
-    ansible.builtin.user:
-      name: "{{ ansible_user }}"
-      groups: docker
-      append: yes
+- name: Add user to docker group
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: true
 
-  - name: Cleanup docker
-    community.docker.docker_prune:
-      containers: true
-      images: true
-      images_filters:
-        dangling: false
-      networks: true
-      builder_cache: true
-      volumes: false
-    tags: [never, cleanup, full_cleanup]
-      
+- name: Cleanup docker
+  community.docker.docker_prune:
+    containers: true
+    images: true
+    images_filters:
+      dangling: false
+    networks: true
+    builder_cache: true
+    volumes: false
+  tags: [never, cleanup, full_cleanup]
