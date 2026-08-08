@@ -36,4 +36,15 @@
       name: "{{ ansible_user }}"
       groups: docker
       append: yes
+
+  - name: Cleanup docker
+    community.docker.docker_prune:
+      containers: true
+      images: true
+      images_filters:
+        dangling: false
+      networks: true
+      builder_cache: true
+      volumes: false
+    tags: [never, cleanup, full_cleanup]
       

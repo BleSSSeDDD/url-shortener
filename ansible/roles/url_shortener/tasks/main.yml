@@ -3,6 +3,7 @@
       that:
         - postgres_password | length > 0
       fail_msg: "postgres_password not set"
+    tags: [always]
   
   - name: Create a directory
     ansible.builtin.file:
@@ -35,7 +36,16 @@
   - name: Pull images
     community.docker.docker_compose_v2_pull:
       project_src: "{{ app_dir }}"
+    tags: [docker_compose]
     
   - name: Start containers
     community.docker.docker_compose_v2:
       project_src: "{{ app_dir }}"
+    tags: [docker_compose]
+
+  - name: Docker compose down -v
+    community.docker.docker_compose_v2:
+      project_src: "{{ app_dir }}"
+      state: absent
+      remove_volumes: true
+    tags: [never, wipe, full_cleanup]
