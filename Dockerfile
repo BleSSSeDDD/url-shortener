@@ -2,7 +2,6 @@ FROM golang:1.25.3 AS build
 
 WORKDIR /build
 
-# сначала только зависимости
 COPY go.mod go.sum ./
 RUN go mod download
 
